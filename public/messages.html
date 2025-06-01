@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messages from Teachers</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #fff0f5;
+      margin: 0;
+      padding: 0;
+      direction: ltr;
+    }
+
+    header {
+      background-color: #ff4da6;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 24px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .container {
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .button-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 30px;
+    }
+
+    .button-row button {
+      background-color: #ff4da6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .button-row button:hover {
+      background-color: #e60073;
+      transform: translateY(-2px);
+    }
+
+    .message {
+      background-color: white;
+      border-left: 4px solid #ff4da6;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(255,77,166,0.1);
+    }
+
+    .message strong {
+      color: #ff4da6;
+    }
+
+    .reply-btn {
+      background-color: #ff4da6;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: all 0.3s ease;
+    }
+
+    .reply-btn:hover {
+      background-color: #000000;
+      transform: translateY(-1px);
+    }
+
+    .reply-form {
+      margin-top: 15px;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .reply-form textarea {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      border: 1px solid #ffb3d9;
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .send-reply-btn {
+      background-color: #ff4da6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: bold;
+    }
+
+    .send-reply-btn:hover {
+      background-color: #e60073;
+      transform: translateY(-1px);
+    }
+
+    small {
+      color: #999;
+      display: block;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>Messages from Teachers</header>
+  <div class="container">
+    <div class="button-row">
+      <button onclick="window.location.href='index.html'">Back to Home</button>
+      <button onclick="window.location.href='student_messages.html'">View Messages from Students</button>
+    </div>
+    <div id="messagesContainer"></div>
+  </div>
+
+  <script>
+    // Get current user from localStorage
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+
+    if (!currentUser) {
+      alert("You must be logged in to view messages.");
+      window.location.href = "index.html";
+    }
+
+    async function showMessagesFromTeachers() {
+      try {
+        // Fetch messages for the current user
+        const response = await fetch(`/messages/${currentUser.email}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch messages');
+        }
+        const allMessages = await response.json();
+
+        // Filter only messages from teachers
+        const messagesFromTeachers = allMessages.filter(msg => msg.fromRole === "teacher");
+
+        const container = document.getElementById("messagesContainer");
+        container.innerHTML = "";
+
+        if (messagesFromTeachers.length === 0) {
+          container.innerHTML = "<p style='text-align: center; color: #ff4da6;'>No messages from teachers yet.</p>";
+          return;
+        }
+
+        // Display each message
+        messagesFromTeachers.forEach(msg => {
+          const msgDiv = document.createElement("div");
+          msgDiv.className = "message";
+          msgDiv.innerHTML = `
+            <strong>From:</strong> ${msg.fromName || msg.from}<br/>
+            <strong>Message:</strong> ${msg.text || msg.message}<br/>
+            <small>${formatDate(msg.timestamp)}</small>
+            <button class="reply-btn" data-from="${msg.from}" data-fromname="${msg.fromName || msg.from}">
+              <i class="fas fa-reply"></i> Reply
+            </button>
+            <div class="reply-form" id="reply-form-${msg.from}">
+              <textarea placeholder="Type your reply here..." rows="3"></textarea>
+              <button class="send-reply-btn" data-to="${msg.from}">
+                <i class="fas fa-paper-plane"></i> Send Reply
+              </button>
+            </div>
+          `;
+          container.appendChild(msgDiv);
+        });
+
+        // Add event listeners for reply buttons
+        document.querySelectorAll('.reply-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const fromEmail = this.getAttribute('data-from');
+            const replyForm = document.getElementById(`reply-form-${fromEmail}`);
+            replyForm.style.display = replyForm.style.display === 'block' ? 'none' : 'block';
+          });
+        });
+
+        // Add event listeners for send reply buttons
+        document.querySelectorAll('.send-reply-btn').forEach(btn => {
+          btn.addEventListener('click', async function() {
+            const toEmail = this.getAttribute('data-to');
+            const form = this.parentElement;
+            const textarea = form.querySelector('textarea');
+            const message = textarea.value.trim();
+
+            if (!message) {
+              alert('Please enter a message');
+              return;
+            }
+
+            try {
+              const response = await fetch('/messages', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  from: currentUser.email,
+                  to: toEmail,
+                  message: message,
+                  name: currentUser.name
+                })
+              });
+
+              if (!response.ok) {
+                throw new Error('Failed to send message');
+              }
+
+              const result = await response.json();
+              if (result.success) {
+                alert('Reply sent successfully!');
+                form.style.display = 'none';
+                textarea.value = '';
+              } else {
+                throw new Error(result.message || 'Failed to send message');
+              }
+            } catch (error) {
+              console.error('Error sending reply:', error);
+              alert('Failed to send reply: ' + error.message);
+            }
+          });
+        });
+
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        document.getElementById("messagesContainer").innerHTML = `
+          <div class="message" style="text-align: center;">
+            <p style="color: #ff4da6;">Failed to load messages. ${error.message}</p>
+            <button class="reply-btn" onclick="showMessagesFromTeachers()">Try Again</button>
+          </div>
+        `;
+      }
+    }
+
+    function formatDate(timestamp) {
+      const date = new Date(timestamp);
+      return date.toLocaleString();
+    }
+
+    window.onload = showMessagesFromTeachers;
+  </script>
+</body>
+</html>

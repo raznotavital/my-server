@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messages from Teachers</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #ffe6f0;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+
+    header {
+      background-color: #ff1493;
+      color: white;
+      padding: 20px;
+    }
+
+    .message-container {
+      max-width: 600px;
+      margin: 20px auto;
+      background-color: white;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      text-align: left;
+    }
+
+    .message {
+      border-bottom: 1px solid #ddd;
+      padding: 10px 0;
+    }
+
+    .message:last-child {
+      border-bottom: none;
+    }
+
+    .message .from {
+      font-weight: bold;
+    }
+
+    .nav-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .nav-buttons button {
+      background-color: #ff69b4;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .nav-buttons button:hover {
+      background-color: #ff1493;
+    }
+
+    .nav-buttons button.student-messages {
+      background-color: #4da6ff;
+    }
+
+    .nav-buttons button.student-messages:hover {
+      background-color: #0077cc;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Messages from Teachers</h1>
+  </header>
+
+  <div class="message-container" id="messageList"></div>
+
+  <div class="nav-buttons">
+    <button onclick="location.href='index.html'">Back to Home</button>
+    <button id="studentMessagesBtn" class="student-messages" onclick="location.href='student_messages.html'">View Student Messages</button>
+  </div>
+
+  <script>
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+
+    if (!currentUser) {
+      alert("You must be logged in to view messages.");
+      window.location.href = "index.html";
+    }
+
+    async function fetchMessages() {
+      try {
+        const response = await fetch(`http://localhost:3000/messages/${encodeURIComponent(currentUser.email)}`);
+        const allMessages = await response.json();
+
+        const messagesFromTeachers = allMessages.filter(msg => msg.fromRole === "teacher");
+
+        const messageList = document.getElementById("messageList");
+
+        if (messagesFromTeachers.length === 0) {
+          messageList.innerHTML = "<p>No messages from teachers yet.</p>";
+        } else {
+          messagesFromTeachers.forEach(msg => {
+            const div = document.createElement("div");
+            div.className = "message";
+
+            div.innerHTML = `
+              <div class="from">From: ${msg.fromName} (${msg.from})</div>
+              <div class="text">${msg.text}</div>
+            `;
+
+            messageList.appendChild(div);
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        document.getElementById("messageList").innerHTML = "<p>Failed to load messages.</p>";
+      }
+    }
+
+    // הצגת/הסתרת הכפתור בהתאם לתפקיד המשתמש
+    function toggleStudentMessagesButton() {
+      const studentMessagesBtn = document.getElementById("studentMessagesBtn");
+      if (currentUser.role === 'teacher') {
+        studentMessagesBtn.style.display = 'block';
+      } else {
+        studentMessagesBtn.style.display = 'none';
+      }
+    }
+
+    // הפעלת הפונקציות כאשר הדף נטען
+    window.addEventListener('DOMContentLoaded', function() {
+      fetchMessages();
+      toggleStudentMessagesButton();
+    });
+  </script>
+</body>
+</html>

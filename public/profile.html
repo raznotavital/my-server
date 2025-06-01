@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Teacher Profile - NIP</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #ffe6f0;
+      color: #333;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 { color: #ff3399; }
+    #profilePic {
+      width: 120px; height: 120px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 10px;
+    }
+
+    textarea, input {
+      display: block; margin: 10px auto;
+      padding: 10px; width: 90%; max-width: 400px;
+    }
+    button {
+      padding: 10px 20px; background-color: #ff3399;
+      color: white; border: none; cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover { background-color: #e60073; }
+    video {
+      width: 90%; max-width: 400px;
+      margin-top: 10px;
+    }
+    #logoutBtn, #homeBtn {
+      position: fixed; top: 10px;
+      padding: 8px 16px;
+      background-color: #ff3399;
+      color: white; border: none; cursor: pointer;
+    }
+    #logoutBtn { right: 10px; }
+    #homeBtn { left: 10px; }
+    .video-container {
+      margin: 20px 0;
+      padding: 15px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .video-title {
+      color: #ff3399;
+      margin-bottom: 5px;
+    }
+    .video-description {
+      color: #666;
+      margin-bottom: 10px;
+    }
+    #uploadStatus {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .stats-container {
+      background-color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px auto;
+      max-width: 500px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .stats-title {
+      color: #ff3399;
+      margin-bottom: 10px;
+    }
+    .stats-item {
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 0;
+    }
+    .total-views {
+      font-weight: bold;
+      margin-top: 15px;
+      padding-top: 10px;
+      border-top: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+  <button id="logoutBtn" onclick="logout()">Logout</button>
+  <button id="homeBtn" onclick="goHome()">Home</button>
+
+  <h1>Your Teacher Profile</h1>
+  <img id="profilePic" src="" alt="Profile Picture" />
+  <h2 id="userName"></h2>
+
+<h3>Your Name</h3>
+<input type="text" id="nameInput" value="">
+<button onclick="updateName()">Update Name</button>
+<div id="nameUpdateStatus"></div>
+
+<h3>Profile Picture</h3>
+<input type="file" id="profileImageUpload" accept="image/*">
+<button onclick="updateProfileImage()">Update Picture</button>
+<div id="profileImageStatus"></div>
+  <div id="teacherSection">
+    <h3>Specialty</h3>
+    <input type="text" id="specialtyInput" placeholder="Enter your specialty">
+    <button onclick="saveSpecialty()">Save Specialty</button>
+    <div id="specialtyDisplay" style="margin-top: 10px;"></div>
+
+    <h3>Personal Description</h3>
+    <textarea id="descriptionInput" placeholder="Write something about yourself..."></textarea>
+    <button onclick="saveDescription()">Save Description</button>
+    <div id="userDescription" style="margin-top: 10px;"></div>
+
+    <h3>Upload Video</h3>
+    <input type="text" id="videoTitle" placeholder="Video Title" required>
+    <textarea id="videoDescription" placeholder="Video Description"></textarea>
+    <input type="file" id="videoUpload" accept="video/*" required>
+    <button onclick="uploadVideo()" id="uploadBtn">Upload Video</button>
+    <div id="uploadStatus"></div>
+    
+    <!-- Video Statistics Section -->
+    <div class="stats-container">
+      <h3 class="stats-title">Your Video Statistics</h3>
+      <div id="videoStats"></div>
+      <div class="total-views" id="totalViews">Total Views: Loading...</div>
+    </div>
+    
+    <h3>Your Videos</h3>
+    <div id="videoList"></div>
+  </div>
+
+<script>
+  function goHome() {
+    window.location.href = "index.html";
+  }
+function updateProfileImage() {
+  const fileInput = document.getElementById('profileImageUpload');
+  const file = fileInput.files[0];
+  const statusDiv = document.getElementById('profileImageStatus');
+
+  if (!file) {
+    statusDiv.textContent = "Please select an image first";
+    statusDiv.style.color = "red";
+    return;
+  }
+
+  if (!file.type.startsWith('image/')) {
+    statusDiv.textContent = "Please select an image file (JPEG, PNG, etc.)";
+    statusDiv.style.color = "red";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const imgData = e.target.result;
+    
+    // עדכון מיידי בתצוגה (ללא צורך לרענן)
+    document.getElementById('profilePic').src = imgData;
+    
+    // שליחה לשרת
+    fetch('/update-profile-image', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: currentUser.email,
+        profileImage: imgData
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        statusDiv.textContent = "Profile image updated successfully!";
+        statusDiv.style.color = "green";
+        
+        // עדכון ב-localStorage
+        currentUser.profileImage = imgData;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      } else {
+        throw new Error(data.message || "Update failed");
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      statusDiv.textContent = "Error updating profile image: " + error.message;
+      statusDiv.style.color = "red";
+      
+      // חזרה לתמונה הקודמת אם העדכון נכשל
+      document.getElementById('profilePic').src = currentUser.profileImage;
+    });
+  };
+  
+  reader.readAsDataURL(file);
+}
+
+  function logout() {
+    localStorage.removeItem("currentUser");
+    window.location.href = "index.html";
+  }
+
+  function linkify(text) {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.replace(urlRegex, url => `<a href="${url}" target="_blank">${url}</a>`);
+  }
+
+  const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+  if (!currentUser) {
+    alert("Only teachers can access this page.");
+    window.location.href = "index.html";
+  } else {
+    document.getElementById("profilePic").src = currentUser.profileImage || "https://www.gravatar.com/avatar?d=mp";
+    document.getElementById("userName").textContent = currentUser.name;
+
+    if (currentUser.role === "teacher") {
+      document.getElementById("teacherSection").style.display = "block";
+      loadDescription();
+      displayUserVideos();
+      loadVideoStats(); // Load video statistics
+      document.getElementById("specialtyInput").value = currentUser.specialty || "";
+      document.getElementById("specialtyDisplay").textContent = currentUser.specialty || "";
+    } else {
+      alert("Only teachers can access this page.");
+      window.location.href = "index.html";
+    }
+  }
+
+  // Updated function to load video statistics
+  function loadVideoStats() {
+    fetch('/get-video-stats')
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('Failed to fetch video statistics');
+        }
+        return res.json();
+      })
+      .then(allVideos => {
+        // Filter videos for the current teacher
+        const teacherVideos = allVideos.filter(video => 
+          video.owner && video.owner.toLowerCase() === currentUser.email.toLowerCase()
+        );
+        
+        const statsContainer = document.getElementById('videoStats');
+        const totalViewsElement = document.getElementById('totalViews');
+        
+        if (teacherVideos.length === 0) {
+          statsContainer.innerHTML = '<p>No video statistics available yet.</p>';
+          totalViewsElement.textContent = 'Total Views: 0';
+          return;
+        }
+        
+        // Calculate total views
+        const totalViews = teacherVideos.reduce((sum, video) => sum + (video.views || 0), 0);
+        totalViewsElement.textContent = `Total Views: ${totalViews}`;
+        
+        // Display stats for each video
+        statsContainer.innerHTML = '';
+        teacherVideos.forEach(video => {
+          const statItem = document.createElement('div');
+          statItem.className = 'stats-item';
+          statItem.innerHTML = `
+            <span><strong>${video.name || 'Untitled Video'}</strong></span>
+            <span>Views: ${video.views || 0}</span>
+          `;
+          statsContainer.appendChild(statItem);
+        });
+      })
+      .catch(err => {
+        console.error('Error loading video stats:', err);
+        document.getElementById('videoStats').innerHTML = 
+          '<p>Error loading video statistics. Please try again later.</p>';
+        document.getElementById('totalViews').textContent = 'Total Views: Error';
+      });
+  }
+
+  function loadDescription() {
+    fetch(`/description/${currentUser.email}`)
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("descriptionInput").value = data.description || "";
+        document.getElementById("userDescription").innerHTML = linkify(data.description || "");
+      })
+      .catch(() => console.log("No description found."));
+  }
+
+  function saveDescription() {
+    const desc = document.getElementById("descriptionInput").value.trim();
+    fetch('/save-description', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: currentUser.email, description: desc })
+    })
+    .then(res => res.json())
+    .then(() => {
+      document.getElementById("userDescription").innerHTML = linkify(desc);
+      alert("Description saved!");
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Failed to save description.");
+    });
+  }
+
+  function saveSpecialty() {
+    const specialty = document.getElementById("specialtyInput").value.trim();
+    if (!specialty) {
+      alert("Please enter a specialty.");
+      return;
+    }
+
+    fetch('/save-specialty', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: currentUser.email, specialty })
+    })
+    .then(res => res.json())
+    .then(data => {
+      alert("Specialty saved!");
+      currentUser.specialty = specialty;
+      localStorage.setItem("currentUser", JSON.stringify(currentUser));
+      document.getElementById("specialtyDisplay").textContent = specialty;
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Failed to save specialty.");
+    });
+  }
+
+  function uploadVideo() {
+    const fileInput = document.getElementById("videoUpload");
+    const title = document.getElementById("videoTitle").value.trim();
+    const description = document.getElementById("videoDescription").value.trim();
+    const file = fileInput.files[0];
+    const uploadBtn = document.getElementById("uploadBtn");
+    const statusDiv = document.getElementById("uploadStatus");
+
+    if (!title || !file) {
+      alert("Please provide at least a title and select a video file.");
+      return;
+    }
+
+    if (!file.type.startsWith('video/')) {
+      alert("Please select a video file.");
+      return;
+    }
+
+    uploadBtn.disabled = true;
+    statusDiv.textContent = "Uploading video...";
+    statusDiv.style.color = "blue";
+
+    const formData = new FormData();
+    formData.append("email", currentUser.email);
+    formData.append("videoName", title);
+    formData.append("videoDescription", description);
+    formData.append("videoFile", file);
+
+    fetch("/upload-video", {
+      method: "POST",
+      body: formData
+    })
+    .then(response => {
+      if (!response.ok) {
+        return response.json().then(err => { throw err; });
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        statusDiv.textContent = "Upload completed successfully!";
+        statusDiv.style.color = "green";
+        displayUserVideos();
+        loadVideoStats(); // Refresh stats after upload
+        document.getElementById("videoTitle").value = "";
+        document.getElementById("videoDescription").value = "";
+        fileInput.value = "";
+      } else {
+        throw new Error(data.message || "Upload failed");
+      }
+    })
+    .catch(err => {
+      console.error("Upload error:", err);
+      statusDiv.textContent = "Error: " + (err.message || "Upload failed");
+      statusDiv.style.color = "red";
+    })
+    .finally(() => {
+      uploadBtn.disabled = false;
+    });
+  }
+
+  function displayUserVideos() {
+    const videoList = document.getElementById("videoList");
+    videoList.innerHTML = "";
+
+    fetch(`/user-videos/${currentUser.email}`)
+      .then(res => {
+        if (!res.ok) {
+          throw new Error("Failed to fetch videos");
+        }
+        return res.json();
+      })
+      .then(videos => {
+        if (videos.length === 0) {
+          videoList.innerHTML = "<p>You haven't uploaded any videos yet.</p>";
+          return;
+        }
+
+        videos.forEach(video => {
+          const container = document.createElement("div");
+          container.className = "video-container";
+
+          const title = document.createElement("h4");
+          title.className = "video-title";
+          title.textContent = video.name || "Untitled Video";
+          container.appendChild(title);
+
+          if (video.description) {
+            const desc = document.createElement("p");
+            desc.className = "video-description";
+            desc.textContent = video.description;
+            container.appendChild(desc);
+          }
+
+          const vid = document.createElement("video");
+          vid.src = video.path;
+          vid.controls = true;
+          vid.style.width = "100%";
+          container.appendChild(vid);
+
+          const views = document.createElement("p");
+          views.textContent = `Views: ${video.views || 0}`;
+          views.style.color = "#666";
+          views.style.marginTop = "10px";
+          container.appendChild(views);
+
+          videoList.appendChild(container);
+        });
+      })
+      .catch(err => {
+        console.error("Failed to load videos", err);
+        videoList.innerHTML = "<p>Error loading videos. Please try again later.</p>";
+      });
+  }
+// בתחילת הטעינה, הצג את השם הנוכחי
+document.getElementById("nameInput").value = currentUser.name;
+
+async function updateName() {
+  const newName = document.getElementById("nameInput").value.trim();
+  const statusDiv = document.getElementById("nameUpdateStatus");
+
+  if (!newName) {
+    statusDiv.textContent = "Please enter a name";
+    statusDiv.style.color = "red";
+    return;
+  }
+
+  try {
+    const response = await fetch('/update-name', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: currentUser.email,
+        newName: newName
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      statusDiv.textContent = "Name updated successfully!";
+      statusDiv.style.color = "green";
+      
+      // עדכון הנתונים המקומיים
+      currentUser.name = newName;
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      
+      // עדכון התצוגה
+      document.getElementById("userName").textContent = newName;
+    } else {
+      throw new Error(data.message || "Failed to update name");
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    statusDiv.textContent = "Error updating name: " + error.message;
+    statusDiv.style.color = "red";
+    
+    // חזרה לשם הקודם בתצוגה
+    document.getElementById("nameInput").value = currentUser.name;
+  }
+}
+</script>
+</body>
+</html>

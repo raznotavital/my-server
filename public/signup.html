@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sign Up</title>
+  <style>
+    body {
+      direction: ltr;
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background-color: #fff0f5;
+    }
+
+    form {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 400px;
+      margin: auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    input, select, textarea, button {
+      display: block;
+      width: 100%;
+      margin-bottom: 15px;
+      padding: 10px;
+      font-size: 1em;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #e75480;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background-color: #cc3366;
+    }
+
+    #backButton {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background-color: #d63384;
+      width: auto;
+      padding: 10px 15px;
+    }
+
+    #teacherFields {
+      transition: all 0.3s ease;
+    }
+
+    .error {
+      color: red;
+      font-size: 0.9em;
+      margin-top: -10px;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <button id="backButton" onclick="location.href='index.html'">← Back to Home</button>
+
+  <h2 style="text-align:center; color: #e75480;">Sign Up</h2>
+
+  <form id="signupForm">
+    <label>Full Name:</label>
+    <input type="text" id="name" required placeholder="Enter your full name">
+
+    <label>Email:</label>
+    <input type="email" id="email" required placeholder="example@domain.com">
+
+    <label>Password:</label>
+    <input type="password" id="password" required placeholder="At least 8 characters">
+
+    <label>Select Role:</label>
+    <select id="role" required>
+      <option value="" disabled selected>Select your role</option>
+      <option value="student">Student</option>
+      <option value="teacher">Teacher</option>
+    </select>
+
+    <div id="teacherFields" style="display: none;">
+      <label>Specialty:</label>
+      <input type="text" id="specialty" placeholder="e.g., Math, Science">
+
+      <label>Description:</label>
+      <textarea id="description" rows="3" placeholder="Tell students about yourself..."></textarea>
+    </div>
+
+    <label>Profile Image (Optional):</label>
+    <input type="file" id="profileImage" accept="image/*">
+    <small style="display:block; margin-top: -10px; margin-bottom: 15px; color: #666;">Recommended: Square image (e.g., 500x500px)</small>
+
+    <button type="submit">Create Account</button>
+  </form>
+
+  <script>
+    // הצגת/הסתרת שדות מורה
+    document.getElementById('role').addEventListener('change', function() {
+      document.getElementById('teacherFields').style.display = 
+        this.value === 'teacher' ? 'block' : 'none';
+    });
+
+    // המרת תמונה ל-base64
+    function toBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // טיפול בהרשמה
+    document.getElementById('signupForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      // איסוף נתונים מהטופס
+      const userData = {
+        name: document.getElementById('name').value.trim(),
+        email: document.getElementById('email').value.trim().toLowerCase(),
+        password: document.getElementById('password').value,
+        role: document.getElementById('role').value,
+        specialty: '',
+        description: '',
+        profileImage: 'https://www.gstatic.com/images/branding/product/1x/avatar_square_blue_512dp.png'
+      };
+
+      // הוספת נתונים ספציפיים למורה
+      if (userData.role === 'teacher') {
+        userData.specialty = document.getElementById('specialty').value.trim();
+        userData.description = document.getElementById('description').value.trim();
+      }
+
+      // טיפול בתמונת פרופיל (אם הועלתה)
+      const profileInput = document.getElementById('profileImage');
+      if (profileInput.files.length > 0) {
+        const file = profileInput.files[0];
+        if (!file.type.startsWith('image/')) {
+          alert('Error: Please upload an image file (JPEG, PNG, etc.)');
+          return;
+        }
+        try {
+          userData.profileImage = await toBase64(file);
+        } catch (error) {
+          console.error('Image processing error:', error);
+          alert('Error processing your image. Please try another file.');
+          return;
+        }
+      }
+
+      // שליחה לשרת
+      try {
+        const response = await fetch('/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(userData)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Registration failed');
+        }
+
+        const user = await response.json();
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        window.location.href = 'index.html';
+      } catch (error) {
+        console.error('Registration error:', error);
+        alert(`Error: ${error.message || 'Could not create account. Please try again.'}`);
+      }
+    });
+  </script>
+</body>
+</html>

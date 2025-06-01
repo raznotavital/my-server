@@ -1,0 +1,29 @@
+[
+  {
+    "id": "1748603251442",
+    "from": "raznotavital@gmail.com",
+    "to": "raz.av2024@leyada.net",
+    "name": "מתן",
+    "message": "رازي",
+    "timestamp": "2025-05-30T11:07:31.442Z",
+    "fromRole": "teacher"
+  },
+  {
+    "id": "1748701042392",
+    "from": "raz.av2024@leyada.net",
+    "to": "yyrs4354@gmail.com",
+    "name": "זאב ויטמן",
+    "message": "יש לי בולבול קטן",
+    "timestamp": "2025-05-31T14:17:22.392Z",
+    "fromRole": "teacher"
+  },
+  {
+    "id": "1748701173856",
+    "from": "yyrs4354@gmail.com",
+    "to": "raz.av2024@leyada.net",
+    "name": "נחמה",
+    "message": "אני יודעת",
+    "timestamp": "2025-05-31T14:19:33.856Z",
+    "fromRole": "teacher"
+  }
+]

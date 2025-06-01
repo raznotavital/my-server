@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Send Message</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #fff0f5;
+      padding: 30px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #FF4081;
+    }
+
+    .message-form {
+      max-width: 500px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    textarea {
+      width: 100%;
+      height: 150px;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      resize: none;
+    }
+
+    button {
+      background-color: #FF4081;
+      color: white;
+      padding: 12px 20px;
+      margin-top: 15px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #e03570;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Send a Message</h1>
+
+  <div class="message-form">
+    <label for="message">Write your message to the teacher:</label>
+    <textarea id="message" placeholder="Type your message here..."></textarea>
+    <button onclick="sendMessage()">Send</button>
+  </div>
+
+  <script>
+    const recipientEmail = localStorage.getItem("messageRecipient");
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+
+    if (!recipientEmail || !currentUser) {
+      alert("Missing data. Please try again.");
+      window.location.href = "index.html";
+    }
+
+    function sendMessage() {
+      const text = document.getElementById("message").value.trim();
+
+      if (text.length === 0) {
+        alert("Please enter a message.");
+        return;
+      }
+
+      const messages = JSON.parse(localStorage.getItem("messages") || "[]");
+
+      messages.push({
+        from: currentUser.email,
+        fromName: currentUser.name,
+        to: recipientEmail,
+        text: text,
+        time: new Date().toISOString()
+      });
+
+      localStorage.setItem("messages", JSON.stringify(messages));
+
+      alert("Message sent!");
+      window.location.href = "index.html";
+    }
+  </script>
+
+</body>
+</html>

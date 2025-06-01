@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messages from Students</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #ffe6f0;
+      margin: 0;
+      padding: 0;
+      direction: ltr;
+    }
+
+    header {
+      background-color: #ff4da6;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 24px;
+    }
+
+    .container {
+      padding: 20px;
+    }
+
+    .button-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 30px;
+    }
+
+    .button-row button {
+      background-color: #ff4da6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .button-row button:hover {
+      background-color: #cc0077;
+    }
+
+    .message {
+      background-color: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+
+    .message strong {
+      color: #ff4da6;
+    }
+  </style>
+</head>
+<body>
+  <header>Messages from Students</header>
+  <div class="container">
+    <div class="button-row">
+      <button onclick="window.location.href='messages.html'">Back to Teacher Messages</button>
+      <button onclick="window.location.href='index.html'">Home</button>
+    </div>
+    <div id="messagesContainer"></div>
+  </div>
+
+  <script>
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+
+    if (!currentUser || currentUser.role !== "teacher") {
+      alert("Only teachers can view student messages.");
+      window.location.href = "index.html";
+    }
+
+    async function showMessagesFromStudents() {
+      try {
+        const response = await fetch('http://localhost:3000/messages');
+        const allMessages = await response.json();
+
+        const container = document.getElementById("messagesContainer");
+        container.innerHTML = "";
+
+        const studentMessages = allMessages.filter(
+          msg => msg.fromRole === "student" && msg.to === currentUser.email
+        );
+
+        if (studentMessages.length === 0) {
+          container.innerHTML = "<p>No messages from students.</p>";
+          return;
+        }
+
+        studentMessages.forEach(msg => {
+          const msgDiv = document.createElement("div");
+          msgDiv.className = "message";
+          msgDiv.innerHTML = `
+            <strong>From:</strong> ${msg.fromName} (${msg.fromEmail})<br/>
+            <strong>Message:</strong> ${msg.content}<br/>
+            <small>${new Date(msg.timestamp).toLocaleString()}</small>
+          `;
+          container.appendChild(msgDiv);
+        });
+
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        document.getElementById("messagesContainer").innerHTML = "<p>Failed to load messages.</p>";
+      }
+    }
+
+    window.onload = showMessagesFromStudents;
+  </script>
+</body>
+</html>

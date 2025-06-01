@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NIP</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://10.100.102.87:3000;">
+   <style>
+    body {
+      font-family: Arial, sans-serif;
+      direction: rtl;
+      background-color: #ffe6f0;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+
+    header {
+      background-color: #ff1493;
+      padding: 20px;
+    }
+
+    h1 {
+      margin: 0;
+      color: white;
+    }
+
+    .nav-buttons {
+      margin: 15px 0;
+    }
+
+    .nav-buttons button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #ff69b4;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .nav-buttons button:hover {
+      background-color: #ff1493;
+    }
+
+    .teacher-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 20px;
+    }
+
+    .teacher-card {
+      background-color: white;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      padding: 10px;
+      margin: 10px;
+      width: 180px;
+      text-align: center;
+      box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+      cursor: pointer;
+    }
+
+    .teacher-card img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .teacher-card h3 {
+      margin: 10px 0 5px 0;
+      font-size: 18px;
+    }
+
+    .teacher-card p {
+      margin: 5px 0;
+      color: #666;
+    }
+
+    .logged-in {
+      margin-top: 10px;
+      font-weight: bold;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>NIP</h1>
+    <div class="nav-buttons" id="navButtons">
+      <button id="loginBtn">Login</button>
+      <button id="signupBtn">Signup</button>
+      <button id="profileBtn">Profile</button>
+      <button id="videoShortsBtn">Video</button>
+      <button id="messagesBtn" style="display:none;">Messages</button>
+      <button id="logoutBtn" style="display:none;">Logout</button>
+    </div>
+    <div class="logged-in" id="loggedInStatus"></div>
+  </header>
+<div id="loadingTeachers">Loading teachers...</div>
+<div id="teachersError" style="color:red; display:none;"></div>
+  <h2>Teachers List</h2>
+  <div class="teacher-list" id="teacherList"></div>
+
+  <script>
+    // Initialize elements
+    const loginBtn = document.getElementById('loginBtn');
+    const signupBtn = document.getElementById('signupBtn');
+    const profileBtn = document.getElementById('profileBtn');
+    const videoShortsBtn = document.getElementById('videoShortsBtn');
+    const messagesBtn = document.getElementById('messagesBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const loggedInStatus = document.getElementById('loggedInStatus');
+    const teacherList = document.getElementById('teacherList');
+
+    // Add event listeners
+    loginBtn.addEventListener('click', () => window.location.href = 'login.html');
+    signupBtn.addEventListener('click', () => window.location.href = 'signup.html');
+    profileBtn.addEventListener('click', () => window.location.href = 'profile.html');
+    videoShortsBtn.addEventListener('click', () => window.location.href = 'video-shorts.html');
+    messagesBtn.addEventListener('click', () => window.location.href = 'messages.html');
+    logoutBtn.addEventListener('click', logout);
+
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+    let users = [];
+
+    function logout() {
+      localStorage.removeItem("currentUser");
+      location.reload();
+    }
+
+    function loadTeachers() {
+      teacherList.innerHTML = "";
+      const teachers = users.filter(u => u.role === "teacher");
+
+      teachers.forEach(teacher => {
+        const card = document.createElement("div");
+        card.className = "teacher-card";
+        card.addEventListener('click', () => {
+          localStorage.setItem("selectedTeacher", JSON.stringify({
+            name: teacher.name,
+            email: teacher.email,
+            profileImage: teacher.profileImage || "",
+            description: teacher.description || ""
+          }));
+          window.location.href = "video.html";
+        });
+
+        const img = document.createElement("img");
+        // Use the teacher's profile image if available, otherwise use default
+        img.src = teacher.profileImage || "https://www.gravatar.com/avatar?d=mp&f=y";
+        img.alt = teacher.name;
+        img.onerror = function() {
+          this.src = "https://www.gravatar.com/avatar?d=mp&f=y";
+        };
+
+        const name = document.createElement("h3");
+        name.textContent = teacher.name;
+
+        const specialty = document.createElement("p");
+        specialty.textContent = teacher.specialty || "No specialty";
+
+        card.appendChild(img);
+        card.appendChild(name);
+        card.appendChild(specialty);
+
+        teacherList.appendChild(card);
+      });
+    }
+
+    function updateUI() {
+      if (currentUser) {
+        loginBtn.style.display = "none";
+        signupBtn.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+        messagesBtn.style.display = "inline-block";
+        loggedInStatus.textContent = `Logged in as: ${currentUser.name}`;
+      } else {
+        loginBtn.style.display = "inline-block";
+        signupBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
+        messagesBtn.style.display = "none";
+        loggedInStatus.textContent = "";
+      }
+    }
+async function fetchUsers() {
+  const loadingDiv = document.getElementById('loadingTeachers');
+  const errorDiv = document.getElementById('teachersError');
+  
+  try {
+    loadingDiv.style.display = 'block';
+    errorDiv.style.display = 'none';
+    
+    // החלף את localhost בכתובת ה-IP של השרת
+    const serverIP = '10.100.102.87'; // CHANGE THIS
+    const response = await fetch(`http://10.100.102.87:3000/users`);
+    
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+    
+    users = await response.json();
+    loadTeachers();
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    errorDiv.textContent = `Failed to load teachers: ${error.message}`;
+    errorDiv.style.display = 'block';
+    
+    // נסה לטעון מגיבוי מקומי
+    users = JSON.parse(localStorage.getItem("users")) || [];
+    if (users.length > 0) {
+      loadTeachers();
+    }
+  } finally {
+    loadingDiv.style.display = 'none';
+  }
+}
+    // Initialize
+    fetchUsers();
+    updateUI();
+  </script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messages from Students</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #ffe6f0;
+      margin: 0;
+      padding: 0;
+      direction: ltr;
+    }
+
+    header {
+      background-color: #ff4da6;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 24px;
+    }
+
+    .container {
+      padding: 20px;
+    }
+
+    .button-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 30px;
+    }
+
+    .button-row button {
+      background-color: #ff4da6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .button-row button:hover {
+      background-color: #ff4da6;
+    }
+
+    .message {
+      background-color: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+
+    .message strong {
+      color: #ff4da6;
+    }
+
+.reply-btn {
+  background-color: #ff4da6;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.reply-btn:hover {
+  background-color: #cc0077;
+}
+
+    .reply-btn:hover {
+      background-color: #45a049;
+    }
+
+    .reply-form {
+      margin-top: 10px;
+      display: none;
+    }
+
+    .reply-form textarea {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 5px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+
+    .send-reply-btn {
+      background-color: #ff4da6;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>Messages from Students</header>
+  <div class="container">
+    <div class="button-row">
+      <button onclick="window.location.href='messages.html'">Back to Teacher Messages</button>
+      <button onclick="window.location.href='index.html'">Home</button>
+    </div>
+    <div id="messagesContainer"></div>
+  </div>
+
+  <script>
+    // Get current user from localStorage
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+
+    if (!currentUser || currentUser.role !== "teacher") {
+      alert("Only teachers can view student messages.");
+      window.location.href = "index.html";
+    }
+
+    async function showMessagesFromStudents() {
+      try {
+        // Fetch all users to identify students
+        const usersResponse = await fetch('/users');
+        if (!usersResponse.ok) {
+          throw new Error('Failed to fetch users');
+        }
+        const allUsers = await usersResponse.json();
+        
+        // Filter to get only student emails
+        const studentEmails = allUsers
+          .filter(user => user.role === "student")
+          .map(student => student.email);
+
+        // Fetch messages for the current teacher
+        const messagesResponse = await fetch(`/messages/${currentUser.email}`);
+        if (!messagesResponse.ok) {
+          throw new Error('Failed to fetch messages');
+        }
+        const messages = await messagesResponse.json();
+
+        const container = document.getElementById("messagesContainer");
+        container.innerHTML = "";
+
+        // Filter messages to show only those from students
+        const studentMessages = messages.filter(msg => 
+          studentEmails.includes(msg.from)
+        );
+
+        if (studentMessages.length === 0) {
+          container.innerHTML = "<p>No messages from students.</p>";
+          return;
+        }
+
+        // Display each student message
+        studentMessages.forEach(msg => {
+          const msgDiv = document.createElement("div");
+          msgDiv.className = "message";
+          msgDiv.innerHTML = `
+            <strong>From:</strong> ${msg.fromName || msg.from}<br/>
+            <strong>Message:</strong> ${msg.text || msg.message}<br/>
+            <small>${formatDate(msg.timestamp)}</small>
+            <button class="reply-btn" data-from="${msg.from}" data-fromname="${msg.fromName || msg.from}">Reply</button>
+            <div class="reply-form" id="reply-form-${msg.from}">
+              <textarea placeholder="Type your reply here..." rows="3"></textarea>
+              <button class="send-reply-btn" data-to="${msg.from}">Send Reply</button>
+            </div>
+          `;
+          container.appendChild(msgDiv);
+        });
+
+        // Add event listeners for reply buttons
+        document.querySelectorAll('.reply-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const fromEmail = this.getAttribute('data-from');
+            const replyForm = document.getElementById(`reply-form-${fromEmail}`);
+            replyForm.style.display = replyForm.style.display === 'block' ? 'none' : 'block';
+          });
+        });
+
+        // Add event listeners for send reply buttons
+        document.querySelectorAll('.send-reply-btn').forEach(btn => {
+          btn.addEventListener('click', async function() {
+            const toEmail = this.getAttribute('data-to');
+            const form = this.parentElement;
+            const textarea = form.querySelector('textarea');
+            const message = textarea.value.trim();
+
+            if (!message) {
+              alert('Please enter a message');
+              return;
+            }
+
+            try {
+              const response = await fetch('/messages', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  from: currentUser.email,
+                  to: toEmail,
+                  message: message,
+                  name: currentUser.name
+                })
+              });
+
+              if (!response.ok) {
+                throw new Error('Failed to send message');
+              }
+
+              const result = await response.json();
+              if (result.success) {
+                alert('Reply sent successfully!');
+                form.style.display = 'none';
+                textarea.value = '';
+                // Refresh messages
+                showMessagesFromStudents();
+              } else {
+                throw new Error(result.message || 'Failed to send message');
+              }
+            } catch (error) {
+              console.error('Error sending reply:', error);
+              alert('Failed to send reply: ' + error.message);
+            }
+          });
+        });
+
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        document.getElementById("messagesContainer").innerHTML = `
+          <p>Failed to load messages. ${error.message}</p>
+          <button onclick="showMessagesFromStudents()">Try Again</button>
+        `;
+      }
+    }
+
+    function formatDate(timestamp) {
+      const date = new Date(timestamp);
+      return date.toLocaleString();
+    }
+
+    window.onload = showMessagesFromStudents;
+  </script>
+</body>
+</html>
