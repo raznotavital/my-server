@@ -194,7 +194,7 @@ async function fetchUsers() {
     loadingDiv.style.display = 'block';
     errorDiv.style.display = 'none';
     
-    const response = await fetch('/api/users');
+    const response = await fetch('/api/users.json');
     
     if (!response.ok) {
       throw new Error(`שגיאת שרת: ${response.status}`);
