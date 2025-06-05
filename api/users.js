@@ -1,10 +1,11 @@
 export default async function handler(req, res) {
   try {
     // כאן תשים את הכתובת של השרת המקומי שלך
-    const backendResponse = await fetch('https://my-server-olive.vercel.app/');
-    const data = await backendResponse.json();
-    
-    res.status(200).json(data);
+  import users from './users.json';
+
+export default function handler(req, res) {
+  res.status(200).json(users);
+}
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch users' });
   }
