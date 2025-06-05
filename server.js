@@ -52,7 +52,7 @@ const upload = multer({
 });
 
 // נתיבי קבצים
-const usersFilePath = path.join(__dirname, 'data', 'users.json');
+const usersFilePath = path.join(__dirname, 'api', 'users.json');
 const descriptionsFilePath = path.join(__dirname, 'data', 'description.json');
 const videosFilePath = path.join(__dirname, 'data', 'videos.json');
 
@@ -489,8 +489,7 @@ app.get('/api/teacher/:email', (req, res) => {
 });
 
 // נתיבים סטטיים נוספים
-app.use('/data', express.static(path.join(__dirname, 'data')));
-
+app.use('/api', express.static(path.join(__dirname, 'api')));
 // נתיב ספציפי ל-users.json
 app.get('/users.json', (req, res) => {
   res.sendFile(path.join(__dirname, 'data', 'users.json'));
