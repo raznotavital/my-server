@@ -3,9 +3,7 @@ const path = require('path');
 const express = require('express');
 const bodyParser = require('body-parser');
 const multer = require('multer');
-// הוסף לשרת שלך (בקובץ server.js):
 const cors = require('cors');
-app.use(cors());
 const app = express();
 const PORT = 3000;
 
@@ -21,7 +19,7 @@ const messagesFilePath = path.join(__dirname, 'data', 'messages.json');
 if (!fs.existsSync(messagesFilePath)) {
   fs.writeFileSync(messagesFilePath, JSON.stringify([], null, 2));
 }
-
+app.use(cors());
 app.use(express.static('public'));
 app.use(express.json({ limit: '1GB' })); // ביטול מגבלת גודל
 app.use(express.urlencoded({ extended: true, limit: '1GB' }));
