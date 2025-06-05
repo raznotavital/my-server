@@ -3,7 +3,9 @@ const path = require('path');
 const express = require('express');
 const bodyParser = require('body-parser');
 const multer = require('multer');
-
+// הוסף לשרת שלך (בקובץ server.js):
+const cors = require('cors');
+app.use(cors());
 const app = express();
 const PORT = 3000;
 
