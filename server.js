@@ -197,7 +197,7 @@ app.post('/register', (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
-app.get('/users', (req, res) => {
+app.get('/api/users', (req, res) => {
   const users = readUsers();
   const safeUsers = users.map(({ password, ...rest }) => rest);
   res.json(safeUsers);
