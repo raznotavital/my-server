@@ -1,1 +1,14 @@
-    "body-parser": "^2.2.0",
+{
+  "dependencies": {
+    "@vercel/node": "^2.15.3"
+  }
+}
+{
+  "version": 2,
+  "builds": [
+    { "src": "api/*.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" }
+  ]
+}
