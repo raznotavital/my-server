@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NIP</title>
-   <style>
+  <style>
     body {
       font-family: Arial, sans-serif;
       direction: rtl;
@@ -100,8 +100,8 @@
     </div>
     <div class="logged-in" id="loggedInStatus"></div>
   </header>
-<div id="loadingTeachers">Loading teachers...</div>
-<div id="teachersError" style="color:red; display:none;"></div>
+  <div id="loadingTeachers">Loading teachers...</div>
+  <div id="teachersError" style="color:red; display:none;"></div>
   <h2>Teachers List</h2>
   <div class="teacher-list" id="teacherList"></div>
 
@@ -136,6 +136,11 @@
       teacherList.innerHTML = "";
       const teachers = users.filter(u => u.role === "teacher");
 
+      if (teachers.length === 0) {
+        teacherList.innerHTML = "<p>No teachers found</p>";
+        return;
+      }
+
       teachers.forEach(teacher => {
         const card = document.createElement("div");
         card.className = "teacher-card";
@@ -150,7 +155,6 @@
         });
 
         const img = document.createElement("img");
-        // Use the teacher's profile image if available, otherwise use default
         img.src = teacher.profileImage || "https://www.gravatar.com/avatar?d=mp&f=y";
         img.alt = teacher.name;
         img.onerror = function() {
@@ -166,7 +170,6 @@
         card.appendChild(img);
         card.appendChild(name);
         card.appendChild(specialty);
-
         teacherList.appendChild(card);
       });
     }
@@ -186,49 +189,46 @@
         loggedInStatus.textContent = "";
       }
     }
-async function fetchUsers() {
-  const loadingDiv = document.getElementById('loadingTeachers');
-  const errorDiv = document.getElementById('teachersError');
-  
-  try {
-    loadingDiv.style.display = 'block';
-    errorDiv.style.display = 'none';
-    
-    const response = await fetch('/api/users.json');
-    
-    if (!response.ok) {
-      throw new Error(`שגיאת שרת: ${response.status}`);
-    }
-    
-    users = await response.json();
-    
-    // אם אין מורים - הצג הודעה
-    if (users.length === 0) {
-      teacherList.innerHTML = "<p>לא נמצאו מורים</p>";
-    } else {
-      loadTeachers();
-    }
-    
-  } catch (error) {
-    console.error('שגיאה בטעינת מורים:', error);
-    errorDiv.textContent = `נכשל בטעינת המורים: ${error.message}`;
-    errorDiv.style.display = 'block';
-    
-    // גיבוי מקומי אם ה-API נכשל
-    users = [
-      {
-        "name": "מורה גיבוי",
-        "email": "backup@example.com",
-        "role": "teacher",
-        "profileImage": "https://www.gravatar.com/avatar?d=identicon",
-        "specialty": "התמחות כללית"
+
+    async function fetchUsers() {
+      const loadingDiv = document.getElementById('loadingTeachers');
+      const errorDiv = document.getElementById('teachersError');
+      
+      try {
+        loadingDiv.style.display = 'block';
+        errorDiv.style.display = 'none';
+        
+        // שינוי עיקרי כאן - גישה ישירה לקובץ ה-JSON
+        const response = await fetch('/api/users.json');
+        
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+        
+        users = await response.json();
+        loadTeachers();
+        
+      } catch (error) {
+        console.error('Error loading teachers:', error);
+        errorDiv.textContent = `Failed to load teachers: ${error.message}`;
+        errorDiv.style.display = 'block';
+        
+        // Fallback data
+        users = [
+          {
+            "name": "Backup Teacher",
+            "email": "backup@example.com",
+            "role": "teacher",
+            "profileImage": "https://www.gravatar.com/avatar?d=identicon",
+            "specialty": "General"
+          }
+        ];
+        loadTeachers();
+      } finally {
+        loadingDiv.style.display = 'none';
       }
-    ];
-    loadTeachers();
-  } finally {
-    loadingDiv.style.display = 'none';
-  }
-}
+    }
+
     // Initialize
     fetchUsers();
     updateUI();
