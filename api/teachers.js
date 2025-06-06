@@ -1,0 +1,21 @@
+// api/teachers.js
+const fs = require('fs');
+const path = require('path');
+
+module.exports = async (req, res) => {
+  try {
+    // קריאת הקובץ מהתיקייה data
+    const filePath = path.join(process.cwd(), 'data', 'users.json');
+    const data = fs.readFileSync(filePath, 'utf8');
+    const users = JSON.parse(data);
+    
+    // סינון רק את המורים
+    const teachers = users.filter(user => user.role === "teacher");
+    
+    res.setHeader('Content-Type', 'application/json');
+    res.status(200).json(teachers);
+  } catch (error) {
+    console.error('Error reading users file:', error);
+    res.status(500).json({ error: 'Failed to load teachers data' });
+  }
+};
