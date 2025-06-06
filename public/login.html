@@ -19,33 +19,166 @@
     <button type="submit">Login</button>
   </form>
 
- <script>
-  document.getElementById("loginForm").addEventListener("submit", function(e) {
-    e.preventDefault();
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+<script>
+    // Initialize elements
+    const loginBtn = document.getElementById('loginBtn');
+    const signupBtn = document.getElementById('signupBtn');
+    const profileBtn = document.getElementById('profileBtn');
+    const videoShortsBtn = document.getElementById('videoShortsBtn');
+    const messagesBtn = document.getElementById('messagesBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const loggedInStatus = document.getElementById('loggedInStatus');
+    const teacherList = document.getElementById('teacherList');
 
-    fetch('/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ email, password })
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Incorrect email or password');
+    // Add event listeners
+    loginBtn.addEventListener('click', () => window.location.href = 'login.html');
+    signupBtn.addEventListener('click', () => window.location.href = 'signup.html');
+    profileBtn.addEventListener('click', () => window.location.href = 'profile.html');
+    videoShortsBtn.addEventListener('click', () => window.location.href = 'video-shorts.html');
+    messagesBtn.addEventListener('click', () => window.location.href = 'messages.html');
+    logoutBtn.addEventListener('click', logout);
+
+    let currentUser = JSON.parse(localStorage.getItem("currentUser"));
+    let allUsers = []; // שיניתי את השם מ-users ל-allUsers כדי להבדיל מ-currentUser
+
+    function logout() {
+      localStorage.removeItem("currentUser");
+      currentUser = null;
+      updateUI();
+      location.reload();
+    }
+
+    function loadTeachers() {
+      teacherList.innerHTML = "";
+      const teachers = allUsers.filter(u => u.role === "teacher");
+
+      if (teachers.length === 0) {
+        teacherList.innerHTML = "<p>No teachers found</p>";
+        return;
       }
-      return response.json();
-    })
-    .then(user => {
-      localStorage.setItem("currentUser", JSON.stringify(user));
-      window.location.href = "index.html";
-    })
-    .catch(error => {
-      alert(error.message);
-    });
-  });
-</script>
+
+      teachers.forEach(teacher => {
+        const card = document.createElement("div");
+        card.className = "teacher-card";
+        card.addEventListener('click', () => {
+          localStorage.setItem("selectedTeacher", JSON.stringify({
+            name: teacher.name,
+            email: teacher.email,
+            profileImage: teacher.profileImage || "",
+            description: teacher.description || ""
+          }));
+          window.location.href = "video.html";
+        });
+
+        const img = document.createElement("img");
+        img.src = teacher.profileImage || "https://www.gravatar.com/avatar?d=mp&f=y";
+        img.alt = teacher.name;
+        img.onerror = function() {
+          this.src = "https://www.gravatar.com/avatar?d=mp&f=y";
+        };
+
+        const name = document.createElement("h3");
+        name.textContent = teacher.name;
+
+        const specialty = document.createElement("p");
+        specialty.textContent = teacher.specialty || "No specialty";
+
+        card.appendChild(img);
+        card.appendChild(name);
+        card.appendChild(specialty);
+        teacherList.appendChild(card);
+      });
+    }
+
+    function updateUI() {
+      if (currentUser) {
+        loginBtn.style.display = "none";
+        signupBtn.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+        messagesBtn.style.display = "inline-block";
+        loggedInStatus.textContent = `Logged in as: ${currentUser.name}`;
+        
+        // אם המשתמש הוא מורה, נוסיף כפתור ניהול
+        if (currentUser.role === "teacher") {
+          const manageBtn = document.getElementById('manageBtn') || document.createElement('button');
+          manageBtn.id = 'manageBtn';
+          manageBtn.textContent = 'Manage';
+          manageBtn.style.display = 'inline-block';
+          manageBtn.addEventListener('click', () => window.location.href = 'manage.html');
+          document.querySelector('.nav-buttons').appendChild(manageBtn);
+        }
+      } else {
+        loginBtn.style.display = "inline-block";
+        signupBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
+        messagesBtn.style.display = "none";
+        loggedInStatus.textContent = "";
+        
+        // הסרת כפתור הניהול אם קיים
+        const manageBtn = document.getElementById('manageBtn');
+        if (manageBtn) manageBtn.remove();
+      }
+    }
+
+    async function fetchAllUsers() {
+      const loadingDiv = document.getElementById('loadingTeachers');
+      const errorDiv = document.getElementById('teachersError');
+      
+      try {
+        loadingDiv.style.display = 'block';
+        errorDiv.style.display = 'none';
+        
+        const response = await fetch('/api/users');
+        
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+        
+        allUsers = await response.json();
+        
+        if (!Array.isArray(allUsers)) {
+          throw new Error('Invalid data format - expected array');
+        }
+        
+        loadTeachers();
+        
+        // בדיקה אם המשתמש הנוכחי עדיין קיים בנתונים
+        if (currentUser) {
+          const userExists = allUsers.some(u => u.email === currentUser.email);
+          if (!userExists) {
+            logout(); // אם המשתמש לא קיים יותר, ניצור logout אוטומטי
+          }
+        }
+        
+      } catch (error) {
+        console.error('Error loading users:', error);
+        errorDiv.textContent = `Failed to load users: ${error.message}`;
+        errorDiv.style.display = 'block';
+        
+        // נתוני גיבוי
+        allUsers = [
+          {
+            "name": "Default Teacher",
+            "email": "teacher@example.com",
+            "role": "teacher",
+            "profileImage": "https://www.gravatar.com/avatar?d=identicon",
+            "specialty": "General Education"
+          },
+          {
+            "name": "Default Student",
+            "email": "student@example.com",
+            "role": "student"
+          }
+        ];
+        loadTeachers();
+      } finally {
+        loadingDiv.style.display = 'none';
+      }
+    }
+
+    // Initialize
+    fetchAllUsers();
+    updateUI();
+  </script>
 </body>
 </html>
