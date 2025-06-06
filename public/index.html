@@ -191,52 +191,47 @@
     }
 
     async function fetchUsers() {
-  const loadingDiv = document.getElementById('loadingTeachers');
-  const errorDiv = document.getElementById('teachersError');
-  
-  try {
-    loadingDiv.style.display = 'block';
-    errorDiv.style.display = 'none';
-    
-    // שימוש בכתובת המלאה
-    const response = await fetch('https://my-server-olive.vercel.app/api/users.json', {
-      headers: {
-        'Accept': 'application/json'
+      const loadingDiv = document.getElementById('loadingTeachers');
+      const errorDiv = document.getElementById('teachersError');
+      
+      try {
+        loadingDiv.style.display = 'block';
+        errorDiv.style.display = 'none';
+        
+        const response = await fetch('/api/teachers');
+        
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+        
+        users = await response.json();
+        
+        if (!Array.isArray(users)) {
+          throw new Error('Invalid data format - expected array');
+        }
+        
+        loadTeachers();
+        
+      } catch (error) {
+        console.error('Error loading teachers:', error);
+        errorDiv.textContent = `Failed to load teachers: ${error.message}`;
+        errorDiv.style.display = 'block';
+        
+        // נתוני גיבוי
+        users = [
+          {
+            "name": "Default Teacher",
+            "email": "teacher@example.com",
+            "role": "teacher",
+            "profileImage": "https://www.gravatar.com/avatar?d=identicon",
+            "specialty": "General Education"
+          }
+        ];
+        loadTeachers();
+      } finally {
+        loadingDiv.style.display = 'none';
       }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Server error: ${response.status}`);
     }
-    
-    users = await response.json();
-    
-    if (!Array.isArray(users)) {
-      throw new Error('Invalid data format - expected array');
-    }
-    
-    loadTeachers();
-    
-  } catch (error) {
-    console.error('Error loading teachers:', error);
-    errorDiv.textContent = `Failed to load teachers: ${error.message}`;
-    errorDiv.style.display = 'block';
-    
-    // נתוני גיבוי
-    users = [
-      {
-        "name": "Default Teacher",
-        "email": "teacher@example.com",
-        "role": "teacher",
-        "profileImage": "https://www.gravatar.com/avatar?d=identicon",
-        "specialty": "General Education"
-      }
-    ];
-    loadTeachers();
-  } finally {
-    loadingDiv.style.display = 'none';
-  }
-}
 
     // Initialize
     fetchUsers();
