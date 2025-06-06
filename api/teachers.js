@@ -1,4 +1,4 @@
-// api/teachers.js
+// api/users.js
 const fs = require('fs');
 const path = require('path');
 
@@ -9,13 +9,10 @@ module.exports = async (req, res) => {
     const data = fs.readFileSync(filePath, 'utf8');
     const users = JSON.parse(data);
     
-    // סינון רק את המורים
-    const teachers = users.filter(user => user.role === "teacher");
-    
     res.setHeader('Content-Type', 'application/json');
-    res.status(200).json(teachers);
+    res.status(200).json(users);
   } catch (error) {
     console.error('Error reading users file:', error);
-    res.status(500).json({ error: 'Failed to load teachers data' });
+    res.status(500).json({ error: 'Failed to load users data' });
   }
 };
