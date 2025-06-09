@@ -1,41 +1,200 @@
 const fs = require('fs');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
-// 1. הדפס את הנתיב הנוכחי בתחילת הקובץ
-console.log('[1] Current working directory:', process.cwd());
-
-// הגדר את הנתיבים
+// הגדרת נתיבים
 const dataPath = path.join(process.cwd(), 'data');
 const usersPath = path.join(dataPath, 'users.json');
 const videosPath = path.join(dataPath, 'videos.json');
 const descriptionsPath = path.join(dataPath, 'description.json');
 
-// 2. הדפס את הנתיבים המלאים
-console.log('[2] Users JSON path:', usersPath);
-console.log('[2] Videos JSON path:', videosPath);
-console.log('[2] Descriptions JSON path:', descriptionsPath);
+// וידוא שהתיקייה והקבצים קיימים
+if (!fs.existsSync(dataPath)) {
+  fs.mkdirSync(dataPath, { recursive: true });
+}
 
-// 3. בדוק אם הקבצים קיימים
-console.log('[3] Users file exists:', fs.existsSync(usersPath));
-console.log('[3] Videos file exists:', fs.existsSync(videosPath));
-console.log('[3] Descriptions file exists:', fs.existsSync(descriptionsPath));
+// פונקציות עזר לטיפול בקבצי JSON
+function readJsonFile(filePath) {
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, JSON.stringify([]));
+    return [];
+  }
+  const data = fs.readFileSync(filePath, 'utf8');
+  return JSON.parse(data);
+}
+
+function writeJsonFile(filePath, data) {
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+}
 
 module.exports = async (req, res) => {
-    try {
-        // 4. הדפס את פרטי הבקשה
-        console.log('[4] Incoming request:', {
-            method: req.method,
-            query: req.query,
-            body: req.body
-        });
+  try {
+    console.log(`[API] Received ${req.method} request for action: ${req.query.action || req.body?.action}`);
 
-        // ... קוד ה-API שלך כאן ...
+    // טעינת כל הקבצים
+    const users = readJsonFile(usersPath);
+    const videos = readJsonFile(videosPath);
+    let descriptions = readJsonFile(descriptionsPath);
 
-    } catch (error) {
-        console.error('[ERROR] Full error:', error);
-        res.status(500).json({ 
-            error: 'Internal server error',
-            details: error.message 
-        });
+    // טיפול בבקשות GET
+    if (req.method === 'GET') {
+      const action = req.query.action;
+
+      if (action === 'load-description') {
+        const email = req.query.email;
+        if (!email) {
+          return res.status(400).json({ error: 'Email is required' });
+        }
+
+        const description = descriptions.find(d => d.email === email) || { email, description: '' };
+        return res.json(description);
+      }
+
+      if (action === 'user-videos') {
+        const email = req.query.email;
+        if (!email) {
+          return res.status(400).json({ error: 'Email is required' });
+        }
+
+        const userVideos = videos.filter(v => v.owner === email);
+        return res.json(userVideos);
+      }
+
+      if (action === 'video-stats') {
+        return res.json(videos);
+      }
+
+      return res.status(400).json({ error: 'Unknown action' });
     }
+
+    // טיפול בבקשות POST
+    if (req.method === 'POST') {
+      let body;
+      if (req.headers['content-type']?.includes('multipart/form-data')) {
+        // טיפול בהעלאת קבצים
+        body = req.body;
+      } else {
+        body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      }
+
+      const action = body.action;
+
+      if (action === 'save-description') {
+        const { email, description } = body;
+        if (!email || description === undefined) {
+          return res.status(400).json({ error: 'Email and description are required' });
+        }
+
+        // עדכון או יצירת תיאור חדש
+        const existingIndex = descriptions.findIndex(d => d.email === email);
+        if (existingIndex >= 0) {
+          descriptions[existingIndex].description = description;
+        } else {
+          descriptions.push({ email, description });
+        }
+
+        writeJsonFile(descriptionsPath, descriptions);
+        return res.json({ success: true });
+      }
+
+      if (action === 'save-specialty') {
+        const { email, specialty } = body;
+        if (!email || !specialty) {
+          return res.status(400).json({ error: 'Email and specialty are required' });
+        }
+
+        const userIndex = users.findIndex(u => u.email === email);
+        if (userIndex >= 0) {
+          users[userIndex].specialty = specialty;
+          writeJsonFile(usersPath, users);
+          return res.json({ success: true });
+        }
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      if (action === 'update-profile-image') {
+        const { email, profileImage } = body;
+        if (!email || !profileImage) {
+          return res.status(400).json({ error: 'Email and image are required' });
+        }
+
+        const userIndex = users.findIndex(u => u.email === email);
+        if (userIndex >= 0) {
+          users[userIndex].profileImage = profileImage;
+          writeJsonFile(usersPath, users);
+          return res.json({ success: true });
+        }
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      if (action === 'update-name') {
+        const { email, newName } = body;
+        if (!email || !newName) {
+          return res.status(400).json({ error: 'Email and new name are required' });
+        }
+
+        const userIndex = users.findIndex(u => u.email === email);
+        if (userIndex >= 0) {
+          users[userIndex].name = newName;
+          writeJsonFile(usersPath, users);
+          return res.json({ success: true });
+        }
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      if (action === 'upload-video') {
+        if (!req.files || !req.files.videoFile) {
+          return res.status(400).json({ error: 'No video file uploaded' });
+        }
+
+        const videoFile = req.files.videoFile;
+        const { videoName, videoDescription, email } = body;
+
+        // יצירת שם קובץ ייחודי
+        const videoId = uuidv4();
+        const fileExt = path.extname(videoFile.name);
+        const fileName = `video_${videoId}${fileExt}`;
+        const uploadPath = path.join(dataPath, 'videos', fileName);
+
+        // וידוא שתיקיית הסרטונים קיימת
+        const videosDir = path.join(dataPath, 'videos');
+        if (!fs.existsSync(videosDir)) {
+          fs.mkdirSync(videosDir, { recursive: true });
+        }
+
+        // שמירת הקובץ
+        await videoFile.mv(uploadPath);
+
+        // הוספת הסרטון לרשימה
+        const newVideo = {
+          id: videoId,
+          name: videoName,
+          description: videoDescription,
+          path: `/data/videos/${fileName}`,
+          owner: email,
+          views: 0,
+          uploadedAt: new Date().toISOString()
+        };
+
+        videos.push(newVideo);
+        writeJsonFile(videosPath, videos);
+
+        return res.json({ 
+          success: true,
+          video: newVideo
+        });
+      }
+
+      return res.status(400).json({ error: 'Unknown action' });
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
+  } catch (error) {
+    console.error('API Error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
 };
