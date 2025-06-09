@@ -1,152 +1,12 @@
- const fs = require('fs');
-const path = require('path');
+
 const express = require('express');
-const bodyParser = require('body-parser');
-const multer = require('multer');
-const cors = require('cors');
+const fileUpload = require('express-fileupload');
 const app = express();
-const PORT = 3000;
 
-// יצירת תיקיות אם לא קיימות
-const ensureDir = dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-};
-ensureDir(path.join(__dirname, 'public', 'uploads'));
-ensureDir(path.join(__dirname, 'data'));
-
-// וידוא שקובץ ההודעות קיים
-const messagesFilePath = path.join(__dirname, 'data', 'messages.json');
-if (!fs.existsSync(messagesFilePath)) {
-  fs.writeFileSync(messagesFilePath, JSON.stringify([], null, 2));
-}
-app.use(cors());
+app.use(express.json());
+app.use(fileUpload());
 app.use(express.static('public'));
-app.use(express.json({ limit: '1GB' })); // ביטול מגבלת גודל
-app.use(express.urlencoded({ extended: true, limit: '1GB' }));
-
-// הגדרות העלאת קבצים - שמירה לפי משתמש
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const email = req.body.email ? req.body.email.trim().toLowerCase() : 'unknown';
-    const userUploadDir = path.join(__dirname, 'public', 'uploads', email);
-    ensureDir(userUploadDir);
-    cb(null, userUploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueName = Date.now() + '-' + file.originalname.replace(/\s+/g, '_');
-    cb(null, uniqueName);
-  }
-});
-
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('video/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Not a video file!'), false);
-  }
-};
-
-const upload = multer({ 
-  storage,
-  fileFilter
-});
-
-// נתיבי קבצים
-const usersFilePath = path.join(__dirname, 'api', 'users.json');
-const descriptionsFilePath = path.join(__dirname, 'data', 'description.json');
-const videosFilePath = path.join(__dirname, 'data', 'videos.json');
-
-// פונקציות עזר
-function readJSON(filePath, defaultValue) {
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify(defaultValue, null, 2));
-    return defaultValue;
-  }
-  
-  try {
-    const data = fs.readFileSync(filePath, { encoding: 'utf8', flag: 'r' });
-    return data ? JSON.parse(data) : defaultValue;
-  } catch (e) {
-    console.error(`Error reading ${filePath}:`, e);
-    return defaultValue;
-  }
-}
-function saveJSON(filePath, data) {
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), { encoding: 'utf8', flag: 'w' });
-  } catch (e) {
-    console.error(`Error saving to ${filePath}:`, e);
-    throw e;
-  }
-}
-function readUsers() {
-  return readJSON(usersFilePath, []);
-}
-
-function saveUsers(users) {
-  saveJSON(usersFilePath, users);
-}
-
-function readMessages() {
-  try {
-    const data = fs.readFileSync(messagesFilePath, 'utf8');
-    return JSON.parse(data);
-  } catch (e) {
-    console.error('Error reading messages:', e);
-    return [];
-  }
-}
-
-function saveMessages(messages) {
-  try {
-    fs.writeFileSync(messagesFilePath, JSON.stringify(messages, null, 2));
-    return true;
-  } catch (e) {
-    console.error('Error saving messages:', e);
-    return false;
-  }
-}
-
-function readDescriptions() {
-  return readJSON(descriptionsFilePath, {});
-}
-
-function saveDescription(email, description) {
-  const descriptions = readDescriptions();
-  const users = readUsers();
-  const lowerEmail = email.toLowerCase();
-
-  descriptions[lowerEmail] = description;
-  saveJSON(descriptionsFilePath, descriptions);
-
-  const userIndex = users.findIndex(u => (u.email || '').trim().toLowerCase() === lowerEmail);
-  if (userIndex !== -1) {
-    users[userIndex].description = description;
-    saveUsers(users);
-  }
-}
-
-function readVideos() {
-  return readJSON(videosFilePath, []);
-}
-
-function saveVideos(videos) {
-  saveJSON(videosFilePath, videos);
-}
-
-function addVideoToUser(email, videoData) {
-  const users = readUsers();
-  const lowerEmail = email.toLowerCase();
-  const userIndex = users.findIndex(u => (u.email || '').trim().toLowerCase() === lowerEmail);
-  
-  if (userIndex !== -1) {
-    if (!users[userIndex].videos) {
-      users[userIndex].videos = [];
-    }
-    users[userIndex].videos.push(videoData);
-    saveUsers(users);
-  }
-}
+app.use('/api/teacher-profile', require('./api/teacher-profile'));
 
 // -------------------- API ROUTES -------------------- //
 app.post('/login', (req, res) => {
@@ -652,6 +512,7 @@ app.get('/get-video-stats', (req, res) => {
     });
   }
 });
-app.listen(3000, '0.0.0.0', () => {
-  console.log('Server is running on http://0.0.0.0:3000');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
