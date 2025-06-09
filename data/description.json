@@ -1,6 +1,18 @@
- {
-  "raznotavitak@gmail.com": "טטטטט",
-  "razavital360@gmail.com": "אין",
-  "raz.av2024@leyada.net": "h",
-  "raznotavital@gmail.com": "ררר"
-} 
+[
+  {
+    "email": "raznotavitak@gmail.com",
+    "description": "טטטטט"
+  },
+  {
+    "email": "razavital360@gmail.com",
+    "description": "אין"
+  },
+  {
+    "email": "raz.av2024@leyada.net",
+    "description": "h"
+  },
+  {
+    "email": "raznotavital@gmail.com",
+    "description": "ררר"
+  }
+]
