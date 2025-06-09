@@ -13,14 +13,18 @@ if (!fs.existsSync(dataPath)) {
   fs.mkdirSync(dataPath, { recursive: true });
 }
 
-// פונקציות עזר לטיפול בקבצי JSON
 function readJsonFile(filePath) {
   if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify([]));
+    fs.writeFileSync(filePath, '[]'); // שים לב שזה כותב מחרוזת ריקה של מערך
     return [];
   }
-  const data = fs.readFileSync(filePath, 'utf8');
-  return JSON.parse(data);
+  try {
+    const data = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(data);
+  } catch (e) {
+    console.error(`Error reading ${filePath}:`, e);
+    return [];
+  }
 }
 
 function writeJsonFile(filePath, data) {
