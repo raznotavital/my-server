@@ -158,7 +158,7 @@ module.exports = async (req, res) => {
         const videoId = uuidv4();
         const fileExt = path.extname(videoFile.name);
         const fileName = `video_${videoId}${fileExt}`;
-        const uploadPath = path.join(dataPath, 'videos', fileName);
+ const uploadPath = path.join(process.cwd(), 'data', 'videos', fileName);
 
         // וידוא שתיקיית הסרטונים קיימת
         const videosDir = path.join(dataPath, 'videos');
