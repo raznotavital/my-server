@@ -261,6 +261,13 @@ app.post('/upload-video', upload.single('videoFile'), (req, res) => {
       success: true, 
       video: newVideo,
       message: "Video uploaded successfully"
+
+      console.log('Saving video to:', uploadPath);
+console.log('Video file info:', {
+  name: videoFile.name,
+  size: videoFile.size,
+  mimetype: videoFile.mimetype
+});
     });
   } catch (err) {
     console.error('Error uploading video:', err);
