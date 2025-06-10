@@ -7,15 +7,20 @@ const dataPath = path.join(process.cwd(), 'data');
 const usersPath = path.join(dataPath, 'users.json');
 const videosPath = path.join(dataPath, 'videos.json');
 const descriptionsPath = path.join(dataPath, 'description.json');
+const videosDirPath = path.join(dataPath, 'videos');
 
 // וידוא שהתיקייה והקבצים קיימים
 if (!fs.existsSync(dataPath)) {
   fs.mkdirSync(dataPath, { recursive: true });
 }
+if (!fs.existsSync(videosDirPath)) {
+  fs.mkdirSync(videosDirPath, { recursive: true });
+}
 
+// פונקציות עזר לטיפול בקבצי JSON
 function readJsonFile(filePath) {
   if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, '[]'); // שים לב שזה כותב מחרוזת ריקה של מערך
+    fs.writeFileSync(filePath, '[]', 'utf8');
     return [];
   }
   try {
@@ -28,17 +33,17 @@ function readJsonFile(filePath) {
 }
 
 function writeJsonFile(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+  } catch (e) {
+    console.error(`Error writing to ${filePath}:`, e);
+    throw e;
+  }
 }
 
 module.exports = async (req, res) => {
   try {
     console.log(`[API] Received ${req.method} request for action: ${req.query.action || req.body?.action}`);
-
-    // טעינת כל הקבצים
-    const users = readJsonFile(usersPath);
-    const videos = readJsonFile(videosPath);
-    let descriptions = readJsonFile(descriptionsPath);
 
     // טיפול בבקשות GET
     if (req.method === 'GET') {
@@ -50,7 +55,13 @@ module.exports = async (req, res) => {
           return res.status(400).json({ error: 'Email is required' });
         }
 
-        const description = descriptions.find(d => d.email === email) || { email, description: '' };
+        const descriptions = readJsonFile(descriptionsPath);
+        const description = descriptions.find(d => d.email === email) || { 
+          email, 
+          description: '' 
+        };
+        
+        console.log('Returning description for:', email);
         return res.json(description);
       }
 
@@ -60,11 +71,13 @@ module.exports = async (req, res) => {
           return res.status(400).json({ error: 'Email is required' });
         }
 
-        const userVideos = videos.filter(v => v.owner === email);
+        const videos = readJsonFile(videosPath);
+        const userVideos = videos.filter(v => v.owner && v.owner.toLowerCase() === email.toLowerCase());
         return res.json(userVideos);
       }
 
       if (action === 'video-stats') {
+        const videos = readJsonFile(videosPath);
         return res.json(videos);
       }
 
@@ -75,13 +88,19 @@ module.exports = async (req, res) => {
     if (req.method === 'POST') {
       let body;
       if (req.headers['content-type']?.includes('multipart/form-data')) {
-        // טיפול בהעלאת קבצים
         body = req.body;
       } else {
-        body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        try {
+          body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        } catch (e) {
+          return res.status(400).json({ error: 'Invalid JSON body' });
+        }
       }
 
       const action = body.action;
+      if (!action) {
+        return res.status(400).json({ error: 'Action is required' });
+      }
 
       if (action === 'save-description') {
         const { email, description } = body;
@@ -89,8 +108,9 @@ module.exports = async (req, res) => {
           return res.status(400).json({ error: 'Email and description are required' });
         }
 
-        // עדכון או יצירת תיאור חדש
+        const descriptions = readJsonFile(descriptionsPath);
         const existingIndex = descriptions.findIndex(d => d.email === email);
+        
         if (existingIndex >= 0) {
           descriptions[existingIndex].description = description;
         } else {
@@ -101,51 +121,6 @@ module.exports = async (req, res) => {
         return res.json({ success: true });
       }
 
-      if (action === 'save-specialty') {
-        const { email, specialty } = body;
-        if (!email || !specialty) {
-          return res.status(400).json({ error: 'Email and specialty are required' });
-        }
-
-        const userIndex = users.findIndex(u => u.email === email);
-        if (userIndex >= 0) {
-          users[userIndex].specialty = specialty;
-          writeJsonFile(usersPath, users);
-          return res.json({ success: true });
-        }
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      if (action === 'update-profile-image') {
-        const { email, profileImage } = body;
-        if (!email || !profileImage) {
-          return res.status(400).json({ error: 'Email and image are required' });
-        }
-
-        const userIndex = users.findIndex(u => u.email === email);
-        if (userIndex >= 0) {
-          users[userIndex].profileImage = profileImage;
-          writeJsonFile(usersPath, users);
-          return res.json({ success: true });
-        }
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      if (action === 'update-name') {
-        const { email, newName } = body;
-        if (!email || !newName) {
-          return res.status(400).json({ error: 'Email and new name are required' });
-        }
-
-        const userIndex = users.findIndex(u => u.email === email);
-        if (userIndex >= 0) {
-          users[userIndex].name = newName;
-          writeJsonFile(usersPath, users);
-          return res.json({ success: true });
-        }
-        return res.status(404).json({ error: 'User not found' });
-      }
-
       if (action === 'upload-video') {
         if (!req.files || !req.files.videoFile) {
           return res.status(400).json({ error: 'No video file uploaded' });
@@ -154,41 +129,50 @@ module.exports = async (req, res) => {
         const videoFile = req.files.videoFile;
         const { videoName, videoDescription, email } = body;
 
+        if (!videoName || !email) {
+          return res.status(400).json({ error: 'Video name and email are required' });
+        }
+
         // יצירת שם קובץ ייחודי
         const videoId = uuidv4();
         const fileExt = path.extname(videoFile.name);
         const fileName = `video_${videoId}${fileExt}`;
- const uploadPath = path.join(process.cwd(), 'data', 'videos', fileName);
+        const uploadPath = path.join(videosDirPath, fileName);
 
-        // וידוא שתיקיית הסרטונים קיימת
-        const videosDir = path.join(dataPath, 'videos');
-        if (!fs.existsSync(videosDir)) {
-          fs.mkdirSync(videosDir, { recursive: true });
+        try {
+          // שמירת הקובץ
+          await videoFile.mv(uploadPath);
+          console.log(`Video saved to: ${uploadPath}`);
+
+          // הוספת הסרטון לרשימה
+          const videos = readJsonFile(videosPath);
+          const newVideo = {
+            id: videoId,
+            name: videoName,
+            description: videoDescription || '',
+            path: `/api/videos/${fileName}`,
+            owner: email,
+            views: 0,
+            uploadedAt: new Date().toISOString()
+          };
+
+          videos.push(newVideo);
+          writeJsonFile(videosPath, videos);
+
+          return res.json({ 
+            success: true,
+            video: newVideo
+          });
+        } catch (err) {
+          console.error('Video upload error:', err);
+          return res.status(500).json({ 
+            error: 'Failed to save video',
+            details: err.message 
+          });
         }
-
-        // שמירת הקובץ
-        await videoFile.mv(uploadPath);
-
-        // הוספת הסרטון לרשימה
-        const newVideo = {
-          id: videoId,
-          name: videoName,
-          description: videoDescription,
-          path: `/data/videos/${fileName}`,
-          owner: email,
-          views: 0,
-          uploadedAt: new Date().toISOString()
-        };
-
-        videos.push(newVideo);
-        writeJsonFile(videosPath, videos);
-
-        return res.json({ 
-          success: true,
-          video: newVideo
-        });
       }
 
+      // פעולות נוספות...
       return res.status(400).json({ error: 'Unknown action' });
     }
 
