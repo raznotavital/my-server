@@ -7,6 +7,7 @@ app.use(express.json());
 app.use(fileUpload());
 app.use(express.static('public'));
 app.use('/api/teacher-profile', require('./api/teacher-profile'));
+app.use('/api/videos', express.static(path.join(__dirname, 'data', 'videos')));
 
 // -------------------- API ROUTES -------------------- //
 app.post('/login', (req, res) => {
