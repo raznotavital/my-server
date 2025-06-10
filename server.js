@@ -1,14 +1,17 @@
-
 const express = require('express');
 const fileUpload = require('express-fileupload');
+const path = require('path');
+
 const app = express();
 
 app.use(express.json());
 app.use(fileUpload());
 app.use(express.static('public'));
-app.use('/api/teacher-profile', require('./api/teacher-profile'));
+
+// חשוב: הוספת route סטטי לקבצי וידאו
 app.use('/api/videos', express.static(path.join(__dirname, 'data', 'videos')));
 
+// API routes
 // -------------------- API ROUTES -------------------- //
 app.post('/login', (req, res) => {
   const email = (req.body.email || '').trim().toLowerCase();
@@ -520,6 +523,8 @@ app.get('/get-video-stats', (req, res) => {
     });
   }
 });
+app.use('/api/teacher-profile', require('./api/teacher-profile'));
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
