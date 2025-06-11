@@ -61,7 +61,6 @@ module.exports = async (req, res) => {
           description: '' 
         };
         
-        console.log('Returning description for:', email);
         return res.json(description);
       }
 
@@ -121,6 +120,54 @@ module.exports = async (req, res) => {
         return res.json({ success: true });
       }
 
+      if (action === 'save-specialty') {
+        const { email, specialty } = body;
+        if (!email || !specialty) {
+          return res.status(400).json({ error: 'Email and specialty are required' });
+        }
+
+        const users = readJsonFile(usersPath);
+        const userIndex = users.findIndex(u => u.email === email);
+        if (userIndex >= 0) {
+          users[userIndex].specialty = specialty;
+          writeJsonFile(usersPath, users);
+          return res.json({ success: true });
+        }
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      if (action === 'update-profile-image') {
+        const { email, profileImage } = body;
+        if (!email || !profileImage) {
+          return res.status(400).json({ error: 'Email and image are required' });
+        }
+
+        const users = readJsonFile(usersPath);
+        const userIndex = users.findIndex(u => u.email === email);
+        if (userIndex >= 0) {
+          users[userIndex].profileImage = profileImage;
+          writeJsonFile(usersPath, users);
+          return res.json({ success: true });
+        }
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      if (action === 'update-name') {
+        const { email, newName } = body;
+        if (!email || !newName) {
+          return res.status(400).json({ error: 'Email and new name are required' });
+        }
+
+        const users = readJsonFile(usersPath);
+        const userIndex = users.findIndex(u => u.email === email);
+        if (userIndex >= 0) {
+          users[userIndex].name = newName;
+          writeJsonFile(usersPath, users);
+          return res.json({ success: true });
+        }
+        return res.status(404).json({ error: 'User not found' });
+      }
+
       if (action === 'upload-video') {
         if (!req.files || !req.files.videoFile) {
           return res.status(400).json({ error: 'No video file uploaded' });
@@ -172,7 +219,6 @@ module.exports = async (req, res) => {
         }
       }
 
-      // פעולות נוספות...
       return res.status(400).json({ error: 'Unknown action' });
     }
 
