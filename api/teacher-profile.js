@@ -2,220 +2,149 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
-// הגדרת נתיבים
 const dataPath = path.join(process.cwd(), 'data');
 const usersPath = path.join(dataPath, 'users.json');
 const videosPath = path.join(dataPath, 'videos.json');
 const descriptionsPath = path.join(dataPath, 'description.json');
 const videosDirPath = path.join(dataPath, 'videos');
 
-// וידוא שהתיקייה והקבצים קיימים
-if (!fs.existsSync(dataPath)) {
-  fs.mkdirSync(dataPath, { recursive: true });
-}
-if (!fs.existsSync(videosDirPath)) {
-  fs.mkdirSync(videosDirPath, { recursive: true });
-}
+if (!fs.existsSync(dataPath)) fs.mkdirSync(dataPath, { recursive: true });
+if (!fs.existsSync(videosDirPath)) fs.mkdirSync(videosDirPath, { recursive: true });
 
-// פונקציות עזר לטיפול בקבצי JSON
-function readJsonFile(filePath) {
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, '[]', 'utf8');
+function readJsonFile(fp) {
+  if (!fs.existsSync(fp)) {
+    fs.writeFileSync(fp, '[]', 'utf8');
     return [];
   }
-  try {
-    const data = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(data);
-  } catch (e) {
-    console.error(`Error reading ${filePath}:`, e);
-    return [];
-  }
+  try { return JSON.parse(fs.readFileSync(fp, 'utf8')); }
+  catch (e) { console.error(`Error reading ${fp}:`, e); return []; }
 }
 
-function writeJsonFile(filePath, data) {
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-  } catch (e) {
-    console.error(`Error writing to ${filePath}:`, e);
-    throw e;
-  }
+function writeJsonFile(fp, data) {
+  try { fs.writeFileSync(fp, JSON.stringify(data, null, 2), 'utf8'); }
+  catch (e) { console.error(`Error writing to ${fp}:`, e); throw e; }
 }
 
 module.exports = async (req, res) => {
   try {
-    console.log(`[API] Received ${req.method} request for action: ${req.query.action || req.body?.action}`);
+    const method = req.method;
+    const action = req.query.action || req.body?.action;
+    console.log(`[API] ${method} for action: ${action}`);
 
-    // טיפול בבקשות GET
-    if (req.method === 'GET') {
-      const action = req.query.action;
-
+    if (method === 'GET') {
       if (action === 'load-description') {
         const email = req.query.email;
-        if (!email) {
-          return res.status(400).json({ error: 'Email is required' });
-        }
-
-        const descriptions = readJsonFile(descriptionsPath);
-        const description = descriptions.find(d => d.email === email) || { 
-          email, 
-          description: '' 
-        };
-        
-        return res.json(description);
+        if (!email) return res.status(400).json({ error: 'Email is required' });
+        const descs = readJsonFile(descriptionsPath);
+        const found = descs.find(d => d.email === email) || { email, description: '' };
+        return res.json(found);
       }
-
       if (action === 'user-videos') {
         const email = req.query.email;
-        if (!email) {
-          return res.status(400).json({ error: 'Email is required' });
-        }
-
-        const videos = readJsonFile(videosPath);
-        const userVideos = videos.filter(v => v.owner && v.owner.toLowerCase() === email.toLowerCase());
-        return res.json(userVideos);
+        if (!email) return res.status(400).json({ error: 'Email is required' });
+        const vids = readJsonFile(videosPath);
+        const userVids = vids.filter(v => v.owner && v.owner.toLowerCase() === email.toLowerCase());
+        return res.json(userVids);
       }
-
       if (action === 'video-stats') {
-        const videos = readJsonFile(videosPath);
-        return res.json(videos);
+        return res.json(readJsonFile(videosPath));
       }
-
       return res.status(400).json({ error: 'Unknown action' });
     }
 
-    // טיפול בבקשות POST
-    if (req.method === 'POST') {
-      let body;
-      if (req.headers['content-type']?.includes('multipart/form-data')) {
-        body = req.body;
-      } else {
-        try {
-          body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-        } catch (e) {
-          return res.status(400).json({ error: 'Invalid JSON body' });
-        }
+    if (method === 'POST') {
+      let body = req.body;
+      if (!body || typeof body === 'string') {
+        try { body = JSON.parse(req.body); }
+        catch { /* ignore */ }
       }
+      if (!body?.action) return res.status(400).json({ error: 'Action is required' });
+      const { email } = body;
 
-      const action = body.action;
-      if (!action) {
-        return res.status(400).json({ error: 'Action is required' });
-      }
-
-      if (action === 'save-description') {
-        const { email, description } = body;
-        if (!email || description === undefined) {
-          return res.status(400).json({ error: 'Email and description are required' });
-        }
-
-        const descriptions = readJsonFile(descriptionsPath);
-        const existingIndex = descriptions.findIndex(d => d.email === email);
-        
-        if (existingIndex >= 0) {
-          descriptions[existingIndex].description = description;
-        } else {
-          descriptions.push({ email, description });
-        }
-
-        writeJsonFile(descriptionsPath, descriptions);
+      if (body.action === 'save-description') {
+        if (!email || body.description === undefined) return res.status(400).json({ error: 'Email and description are required' });
+        const descs = readJsonFile(descriptionsPath);
+        const idx = descs.findIndex(d => d.email === email);
+        if (idx >= 0) descs[idx].description = body.description;
+        else descs.push({ email, description: body.description });
+        writeJsonFile(descriptionsPath, descs);
         return res.json({ success: true });
       }
 
-      if (action === 'save-specialty') {
-        const { email, specialty } = body;
-        if (!email || !specialty) {
-          return res.status(400).json({ error: 'Email and specialty are required' });
-        }
-
+      if (body.action === 'save-specialty') {
+        if (!email || !body.specialty) return res.status(400).json({ error: 'Email and specialty are required' });
         const users = readJsonFile(usersPath);
-        const userIndex = users.findIndex(u => u.email === email);
-        if (userIndex >= 0) {
-          users[userIndex].specialty = specialty;
-          writeJsonFile(usersPath, users);
-          return res.json({ success: true });
-        }
-        return res.status(404).json({ error: 'User not found' });
+        const idx = users.findIndex(u => u.email === email);
+        if (idx < 0) return res.status(404).json({ error: 'User not found' });
+        users[idx].specialty = body.specialty;
+        writeJsonFile(usersPath, users);
+        return res.json({ success: true });
       }
 
-      if (action === 'update-profile-image') {
-        const { email, profileImage } = body;
-        if (!email || !profileImage) {
-          return res.status(400).json({ error: 'Email and image are required' });
-        }
-
+      if (body.action === 'update-profile-image') {
+        if (!email || !body.profileImage) return res.status(400).json({ error: 'Email and image are required' });
         const users = readJsonFile(usersPath);
-        const userIndex = users.findIndex(u => u.email === email);
-        if (userIndex >= 0) {
-          users[userIndex].profileImage = profileImage;
-          writeJsonFile(usersPath, users);
-          return res.json({ success: true });
-        }
-        return res.status(404).json({ error: 'User not found' });
+        const idx = users.findIndex(u => u.email === email);
+        if (idx < 0) return res.status(404).json({ error: 'User not found' });
+        users[idx].profileImage = body.profileImage;
+        writeJsonFile(usersPath, users);
+        return res.json({ success: true });
       }
 
-      if (action === 'update-name') {
-        const { email, newName } = body;
-        if (!email || !newName) {
-          return res.status(400).json({ error: 'Email and new name are required' });
-        }
-
+      if (body.action === 'update-name') {
+        if (!email || !body.newName) return res.status(400).json({ error: 'Email and new name are required' });
         const users = readJsonFile(usersPath);
-        const userIndex = users.findIndex(u => u.email === email);
-        if (userIndex >= 0) {
-          users[userIndex].name = newName;
-          writeJsonFile(usersPath, users);
-          return res.json({ success: true });
-        }
-        return res.status(404).json({ error: 'User not found' });
+        const idx = users.findIndex(u => u.email === email);
+        if (idx < 0) return res.status(404).json({ error: 'User not found' });
+        users[idx].name = body.newName;
+        writeJsonFile(usersPath, users);
+        return res.json({ success: true });
       }
 
-      if (action === 'upload-video') {
-        if (!req.files || !req.files.videoFile) {
-          return res.status(400).json({ error: 'No video file uploaded' });
+      if (body.action === 'update-video') {
+        const { videoId, fields } = body;
+        if (!email || !videoId || typeof fields !== 'object') {
+          return res.status(400).json({ error: 'Email, videoId and fields are required' });
         }
+        const vids = readJsonFile(videosPath);
+        const vIdx = vids.findIndex(v => v.id === videoId && v.owner.toLowerCase() === email.toLowerCase());
+        if (vIdx < 0) return res.status(404).json({ error: 'Video not found or access denied' });
+        const allowed = ['name', 'description', 'views'];
+        allowed.forEach(key => {
+          if (fields[key] !== undefined) vids[vIdx][key] = fields[key];
+        });
+        writeJsonFile(videosPath, vids);
+        return res.json({ success: true, video: vids[vIdx] });
+      }
 
-        const videoFile = req.files.videoFile;
-        const { videoName, videoDescription, email } = body;
+      if (body.action === 'upload-video' && req.files?.videoFile) {
+        const vf = req.files.videoFile;
+        const { videoName, videoDescription } = body;
+        if (!videoName || !email) return res.status(400).json({ error: 'Video name and email are required' });
 
-        if (!videoName || !email) {
-          return res.status(400).json({ error: 'Video name and email are required' });
-        }
-
-        // יצירת שם קובץ ייחודי
         const videoId = uuidv4();
-        const fileExt = path.extname(videoFile.name);
-        const fileName = `video_${videoId}${fileExt}`;
-        const uploadPath = path.join(videosDirPath, fileName);
+        const ext = path.extname(vf.name);
+        const fn = `video_${videoId}${ext}`;
+        const dest = path.join(videosDirPath, fn);
 
         try {
-          // שמירת הקובץ
-          await videoFile.mv(uploadPath);
-          console.log(`Video saved to: ${uploadPath}`);
-
-          // הוספת הסרטון לרשימה
-          const videos = readJsonFile(videosPath);
-          const newVideo = {
+          await vf.mv(dest);
+          const vids = readJsonFile(videosPath);
+          const newVid = {
             id: videoId,
             name: videoName,
             description: videoDescription || '',
-            path: `/api/videos/${fileName}`,
+            path: `/api/videos/${fn}`,
             owner: email,
             views: 0,
-            uploadedAt: new Date().toISOString()
+            uploadedAt: new Date().toISOString(),
           };
-
-          videos.push(newVideo);
-          writeJsonFile(videosPath, videos);
-
-          return res.json({ 
-            success: true,
-            video: newVideo
-          });
+          vids.push(newVid);
+          writeJsonFile(videosPath, vids);
+          return res.json({ success: true, video: newVid });
         } catch (err) {
           console.error('Video upload error:', err);
-          return res.status(500).json({ 
-            error: 'Failed to save video',
-            details: err.message 
-          });
+          return res.status(500).json({ error: 'Failed to save video', details: err.message });
         }
       }
 
@@ -223,12 +152,8 @@ module.exports = async (req, res) => {
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
-  } catch (error) {
-    console.error('API Error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+  } catch (err) {
+    console.error('API Error:', err);
+    res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 };
