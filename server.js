@@ -258,15 +258,22 @@ app.post('/upload-video', upload.single('videoFile'), (req, res) => {
     videos.push(newVideo);
     saveVideos(videos);
 
-    // הוספת הסרטון למשתמש הספציפי
-    addVideoToUser(lowerEmail, newVideo);
+   // הוספת הסרטון למשתמש הספציפי
+addVideoToUser(lowerEmail, newVideo);
 
-    res.json({ 
-      success: true, 
-      video: newVideo,
-      message: "Video uploaded successfully"
+console.log('Saving video to:', uploadPath);
+console.log('Video file info:', {
+  name: videoFile.name,
+  size: videoFile.size,
+  mimetype: videoFile.mimetype
+});
 
-      console.log('Saving video to:', uploadPath);
+res.json({ 
+  success: true, 
+  video: newVideo,
+  message: "Video uploaded successfully"
+});
+
 console.log('Video file info:', {
   name: videoFile.name,
   size: videoFile.size,
