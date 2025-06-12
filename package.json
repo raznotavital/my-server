@@ -1,12 +1,16 @@
 {
-    "name": "my-app",
-    "version": "1.0.0",
-    "main": "server.js",
-    "scripts": {
-        "start": "node server.js"
-    },
-    "dependencies": {
-        "express": "^4.18.2",
-        "express-fileupload": "^1.4.0"
-    }
+  "name": "video-server",
+  "version": "1.0.0",
+  "description": "Simple Express server for video upload and serving",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-fileupload": "^1.4.0"
+  }
 }
