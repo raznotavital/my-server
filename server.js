@@ -279,7 +279,7 @@ console.log('Video file info:', {
   size: videoFile.size,
   mimetype: videoFile.mimetype
 });
-    });
+
   } catch (err) {
     console.error('Error uploading video:', err);
     res.status(500).json({ success: false, message: "Failed to upload video" });
