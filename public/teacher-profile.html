@@ -180,7 +180,8 @@
   // פונקציות לטעינת נתונים
   async function loadDescription() {
     try {
-      const response = await fetch(`/api/teacher-profile?action=load-description&email=${encodeURIComponent(currentUser.email)}`);
+      const response = await fetch(`/data/description/${teacherEmail}`)
+;
       const data = await response.json();
       
       document.getElementById("descriptionInput").value = data.description || "";
