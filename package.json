@@ -1,0 +1,9 @@
+{
+  "name": "my-app",
+  "version": "1.0.0",
+  "main": "server.js", // או index.js או מה שהקובץ הראשי שלך
+  "scripts": {
+    "start": "node server.js"
+  },
+  ...
+}
