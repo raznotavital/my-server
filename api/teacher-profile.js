@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
+
 const dataPath = path.join(process.cwd(), 'data');
 const usersPath = path.join(dataPath, 'users.json');
 const videosPath = path.join(dataPath, 'videos.json');
