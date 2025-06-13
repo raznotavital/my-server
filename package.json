@@ -1,5 +1,5 @@
 {
-    "name": "video-server",
+    "name": "my-server",
     "version": "1.0.0",
     "description": "Simple Express server for video upload and serving",
     "main": "server.js",
@@ -12,6 +12,7 @@
     "dependencies": {
         "express": "^4.18.2",
         "multer": "1.4.5-lts.1",
+            "uuid": "^9.0.0",
         "express-fileupload": "^1.4.0"
     }
 }
