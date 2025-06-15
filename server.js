@@ -3,7 +3,7 @@ const fileUpload = require('express-fileupload');
 const path = require('path');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
-
+const teachersHandler = require('./api/teachers');
 const app = express();
 
 app.use(express.json());
@@ -63,6 +63,9 @@ app.post('/register', (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+app.get('/api/teachers', teachersHandler);
+
 app.get('/api/users', (req, res) => {
   const users = readUsers();
   const safeUsers = users.map(({ password, ...rest }) => rest);
