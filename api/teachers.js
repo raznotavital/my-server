@@ -5,7 +5,7 @@ const path = require('path');
 module.exports = async (req, res) => {
   try {
     // קריאת הקובץ מהתיקייה data
-    const filePath = path.join(process.cwd(), 'data', 'users.json');
+const filePath = path.join(process.cwd(), 'data', 'videos', 'users.json');
     const data = fs.readFileSync(filePath, 'utf8');
     const users = JSON.parse(data);
     
