@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>סרטוני המורה</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #000;
+      margin: 0;
+      padding: 20px;
+      color: #fff;
+    }
+
+    h1 {
+      color: #cc3399;
+      margin-bottom: 10px;
+    }
+
+    #teacherInfo {
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    #teacherPic {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin: 10px auto;
+      display: block;
+    }
+
+    #backBtn {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background-color: #cc3399;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      cursor: pointer;
+      border-radius: 5px;
+      z-index: 1000;
+    }
+
+    #backBtn:hover {
+      background-color: #a3006b;
+    }
+
+    #messageBox {
+      margin: 30px auto;
+      max-width: 400px;
+      text-align: right;
+      background-color: rgba(255,255,255,0.1);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    #messageBox h3 {
+      text-align: right;
+    }
+
+    #messageBox textarea {
+      width: 100%;
+      padding: 10px;
+      resize: vertical;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      background-color: rgba(255,255,255,0.8);
+    }
+
+    #messageBox button {
+      margin-top: 10px;
+      background-color: #cc3399;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      float: right;
+    }
+
+    #messageBox button:hover {
+      background-color: #a3006b;
+    }
+
+    /* Video container styles - Updated to grid layout */
+    #videosContainer {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+
+    .video-card {
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: #222;
+      aspect-ratio: 9/16; /* טוב לסרטונים אנכיים */
+    }
+
+    .video-card video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      cursor: pointer;
+    }
+
+    .video-info {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      left: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      padding: 15px;
+      color: white;
+    }
+
+    .video-info img {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      vertical-align: middle;
+      margin-left: 10px;
+    }
+
+    .play-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 50px;
+      color: rgba(255,255,255,0.7);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .video-card:hover .play-icon {
+      opacity: 1;
+    }
+
+    .video-card.playing .play-icon {
+      display: none;
+    }
+
+    .like-button {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background-color: rgba(255,255,255,0.1);
+      border: none;
+      color: white;
+      font-size: 16px;
+      padding: 5px 10px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .like-button:hover {
+      background-color: rgba(255,255,255,0.3);
+    }
+  </style>
+</head>
+<body>
+  <button id="backBtn" onclick="goHome()">חזור</button>
+
+  <div id="teacherInfo">
+    <img id="teacherPic" src="" alt="תמונת המורה" />
+    <h1 id="teacherName">שם המורה</h1>
+    <p id="teacherSpecialty"></p>
+    <p id="teacherDescription"></p>
+  </div>
+
+  <div id="videosContainer"></div>
+
+  <div id="messageBox">
+    <h3>send message to the teacher</h3>
+    <textarea id="messageInput" placeholder="כתוב את הודעתך כאן..."></textarea>
+    <button onclick="sendMessage()">שלח הודעה</button>
+  </div>
+
+<script>
+  function goHome() {
+    window.location.href = "index.html";
+  }
+
+  const teacherFromStorage = JSON.parse(localStorage.getItem("selectedTeacher"));
+  const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+  let fullTeacherData = null;
+
+  if (!teacherFromStorage || !teacherFromStorage.email) {
+    document.body.innerHTML = "<p>חסרים נתוני מורה. אנא חזור לדף הבית.</p>";
+    throw new Error("Missing selectedTeacher");
+  }
+
+  async function loadTeacherData() {
+    try {
+      const response = await fetch('users.json');
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      const users = await response.json();
+      
+      // מציאת המורה המלא לפי המייל
+      fullTeacherData = users.find(user => 
+        user.email === teacherFromStorage.email && user.role === "teacher"
+      );
+      
+      if (!fullTeacherData) {
+        throw new Error('Teacher not found in users.json');
+      }
+      
+      displayTeacherInfo();
+      displayTeacherVideos();
+    } catch (error) {
+      console.error('Error loading teacher data:', error);
+      document.getElementById("videosContainer").innerHTML = `
+        <p style="color: white; text-align: center; padding: 20px;">
+          שגיאה בטעינת נתוני המורה. אנא נסה שוב מאוחר יותר.
+        </p>
+      `;
+    }
+  }
+
+  function displayTeacherInfo() {
+    document.getElementById("teacherName").textContent = fullTeacherData.name || "מורה ללא שם";
+    document.getElementById("teacherPic").src = fullTeacherData.profileImage || "https://www.gravatar.com/avatar?d=mp";
+    document.getElementById("teacherSpecialty").textContent = fullTeacherData.specialty ? `התמחות: ${fullTeacherData.specialty}` : "";
+    document.getElementById("teacherDescription").textContent = fullTeacherData.description || "";
+  }
+
+  function displayTeacherVideos() {
+    const videosContainer = document.getElementById("videosContainer");
+    
+    if (!fullTeacherData.videos || fullTeacherData.videos.length === 0) {
+      videosContainer.innerHTML = `
+        <p style="color: white; text-align: center; padding: 20px;">
+        this theacher does not have any videos        </p>
+      `;
+      return;
+    }
+    
+    videosContainer.innerHTML = '';
+    
+    // הצגת סרטונים מהחדש לישן
+    fullTeacherData.videos
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .forEach((video, index) => {
+        const card = document.createElement("div");
+        card.className = "video-card";
+        
+        const videoId = `video-${index}`;
+        
+        card.innerHTML = `
+          <video id="${videoId}" src="${video.path}" playsinline loop muted></video>
+          <div class="play-icon">▶</div>
+          <div class="video-info">
+            <strong>${video.name}</strong><br>
+            <small>${video.description}</small><br>
+            <img src="${fullTeacherData.profileImage || 'https://www.gravatar.com/avatar?d=mp'}" alt="Profile"> ${fullTeacherData.name}
+          </div>
+          <button class="like-button">❤️ לייק</button>
+        `;
+        
+        const videoElement = card.querySelector('video');
+        
+        // טיפול בלחיצה על הסרטון
+        card.addEventListener('click', (e) => {
+          // עצור אם לחצנו על כפתור הלייק
+          if (e.target.classList.contains('like-button')) {
+            return;
+          }
+          
+          // עצור את התפשטות האירוע אם לחצנו על מידע הסרטון
+          if (e.target.closest('.video-info')) {
+            return;
+          }
+          
+          // אם הסרטון מנגן - עצור אותו
+          if (!videoElement.paused) {
+            videoElement.pause();
+            card.classList.remove('playing');
+            return;
+          }
+          
+          // עצור את כל הסרטונים האחרים
+          document.querySelectorAll('video').forEach(v => {
+            if (v !== videoElement) {
+              v.pause();
+              v.currentTime = 0;
+              v.parentElement.classList.remove('playing');
+            }
+          });
+          
+          // הפעל את הסרטון הנוכחי
+          videoElement.muted = false;
+          videoElement.play()
+            .then(() => {
+              card.classList.add('playing');
+            })
+            .catch(err => {
+              console.log("Failed to play:", err);
+            });
+        });
+        
+        videosContainer.appendChild(card);
+      });
+  }
+
+  async function sendMessage() {
+    const messageText = document.getElementById("messageInput").value.trim();
+
+    if (!currentUser || !currentUser.email) {
+      alert("עליך להתחבר כדי לשלוח הודעות.");
+      return;
+    }
+
+    if (!messageText) {
+      alert("אנא הזן הודעה.");
+      return;
+    }
+
+    try {
+      const response = await fetch('/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: currentUser.email,
+          to: fullTeacherData.email,
+          message: messageText,
+          name: currentUser.name
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert(`ההודעה ל${fullTeacherData.name} נשלחה בהצלחה!`);
+        document.getElementById("messageInput").value = "";
+      } else {
+        alert("אירעה שגיאה בשליחת ההודעה: " + (result.message || ""));
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert("אירעה שגיאה בשליחת ההודעה. אנא נסה שוב.");
+    }
+  }
+
+  // טעינת הנתונים כאשר הדף נטען
+  window.addEventListener('DOMContentLoaded', loadTeacherData);
+</script>
+</body>
+</html>
