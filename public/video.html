@@ -209,7 +209,7 @@
 
   async function loadTeacherData() {
     try {
-  const response = await fetch('data/videos/users.json');
+const response = await fetch('/api/teachers');
 
       if (!response.ok) {
         throw new Error('Network response was not ok');
