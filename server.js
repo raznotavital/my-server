@@ -2,19 +2,71 @@ const express = require('express');
 const fileUpload = require('express-fileupload');
 const path = require('path');
 const multer = require('multer');
+const fs = require('fs');
 const upload = multer({ dest: 'uploads/' });
 const teachersHandler = require('./api/teachers');
 const app = express();
+const PORT = 3000;
 
 app.use(express.json());
 app.use(fileUpload());
 app.use(express.static('public'));
+app.use(express.json());
+app.use('/api/videos', express.static(path.join(__dirname, 'data', 'videos')));
 
+const USERS_FILE = path.join(__dirname, 'data', 'videos', 'users.json'); 
 // חשוב: הוספת route סטטי לקבצי וידאו
 app.use('/api/videos', express.static(path.join(__dirname, 'data', 'videos')));
 
 // API routes
 // -------------------- API ROUTES -------------------- //
+
+app.get('/api/teachers', (req, res) => {
+  try {
+    const data = fs.readFileSync(USERS_FILE, 'utf8');
+    const users = JSON.parse(data);
+    res.json(users);
+  } catch (error) {
+    console.error('Error reading users file:', error);
+    res.status(500).json({ error: 'Failed to load users data' });
+  }
+});
+
+// הוספת משתמש חדש (POST)
+app.post('/api/teachers', (req, res) => {
+  try {
+    const newUser = req.body;
+
+    // ולידציה בסיסית
+    if (!newUser.name || !newUser.email || !newUser.password || !newUser.role) {
+      return res.status(400).json({ error: 'Missing required user fields' });
+    }
+
+    const data = fs.existsSync(USERS_FILE) ? fs.readFileSync(USERS_FILE, 'utf8') : '[]';
+    const users = JSON.parse(data);
+
+    // בדיקה אם כבר קיים מייל כזה
+    if (users.some(u => u.email === newUser.email)) {
+      return res.status(409).json({ error: 'User already exists' });
+    }
+
+    // ברירת מחדל לשדות שלא קיימים
+    newUser.profileImage = newUser.profileImage || 'https://www.gravatar.com/avatar?d=mp';
+    newUser.videos = [];
+    newUser.description = newUser.description || '';
+    newUser.specialty = newUser.specialty || '';
+
+    users.push(newUser);
+
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+
+    res.status(201).json({ success: true, user: newUser });
+  } catch (error) {
+    console.error('Error writing users file:', error);
+    res.status(500).json({ error: 'Failed to save user' });
+  }
+});
+
 app.post('/login', (req, res) => {
   const email = (req.body.email || '').trim().toLowerCase();
   const password = req.body.password;
