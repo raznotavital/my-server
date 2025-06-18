@@ -97,201 +97,126 @@
 <body>
   <button class="back-button" onclick="location.href='index.html'">← Back</button>
   <div id="container"></div>
-
   <script>
     const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-    const videoViewTrackers = {}; // To track view progress for each video
+    const videoViewTrackers = {};
 
     async function fetchVideos() {
-      try {
-        // טוען את נתוני הסרטונים מקובץ videos.json
-        const videosRes = await fetch('data/videos/videos.json');
-        const videos = await videosRes.json();
+      const res = await fetch('/all-videos');
+      const videos = await res.json();
+      const usersRes = await fetch('/users');
+      const users = await usersRes.json();
 
-        // טוען את נתוני המשתמשים (אם עדיין נחוץ)
-        const usersRes = await fetch('/users');
-        const users = await usersRes.json();
+      const container = document.getElementById('container');
+      container.innerHTML = '';
+      videos.reverse();
 
-        const container = document.getElementById('container');
-        container.innerHTML = '';
+      videos.forEach((video, index) => {
+        const owner = users.find(u => (u.email || '').toLowerCase() === video.owner.toLowerCase());
+        const profileImage = owner?.profileImage || 'https://www.gstatic.com/images/branding/product/1x/avatar_square_blue_512dp.png';
+        const name = owner?.name || 'Unknown';
+        const views = video.views || 0;
+        const likeCount = video.likes ? video.likes.length : 0;
 
-        if (!Array.isArray(videos) || videos.length === 0) {
-          container.innerHTML = '<p style="padding: 20px;">No videos available.</p>';
-          return;
-        }
+        const card = document.createElement('div');
+        card.className = 'video-card';
 
-        videos.reverse(); // newest first
+        const videoId = `video-${index}`;
 
-        videos.forEach((videoData, index) => {
-          const owner = users.find(u => (u.email || '').toLowerCase() === videoData.owner.toLowerCase());
+        card.innerHTML = `
+          <video id="${videoId}" src="${video.path}" playsinline loop muted></video>
+          <div class="info" data-email="${video.owner}">
+            <strong>${video.name}</strong><br>
+            <small>${video.description}</small><br>
+            <img src="${profileImage}" alt="Profile"> ${name}
+          </div>
+          <button class="like-button" data-videoid="${video.id}">❤️ <span class="like-count">${likeCount}</span></button>
+          <div class="views-count" id="views-${video.id}">👁️ ${views}</div>
+        `;
 
-          const profileImage = owner?.profileImage || 'https://www.gstatic.com/images/branding/product/1x/avatar_square_blue_512dp.png';
-          const name = owner?.name || 'Unknown';
-          const views = videoData.views || 0;
-          const likeCount = videoData.likes ? videoData.likes.length : 0;
+        container.appendChild(card);
+      });
 
-          // בונה את הנתיב לסרטון מתוך הנתונים ב-videos.json
-          const videoPath = `public/uploads/${videoData.owner}/${videoData.filename}`;
-
-          const card = document.createElement('div');
-          card.className = 'video-card';
-
-          const videoId = `video-${index}`;
-
-          card.innerHTML = `
-            <video id="${videoId}" src="${videoPath}" playsinline loop muted></video>
-            <div class="info" data-email="${videoData.owner}">
-              <strong>${videoData.name}</strong><br>
-              <small>${videoData.description}</small><br>
-              <img src="${profileImage}" alt="Profile"> ${name}
-            </div>
-            <button class="like-button" data-videoid="${videoData.id}">❤️ <span class="like-count">${likeCount}</span></button>
-            <div class="views-count" id="views-${videoData.id}">👁️ ${views}</div>
-          `;
-
-          container.appendChild(card);
-        });
-
-        document.querySelectorAll('.info').forEach(info => {
-          info.addEventListener('click', function () {
-            const teacherEmail = this.getAttribute('data-email');
-            const teacher = users.find(u => (u.email || '').toLowerCase() === teacherEmail.toLowerCase());
-
-            if (teacher && teacher.role === "teacher") {
-              localStorage.setItem('selectedTeacher', JSON.stringify({
-                email: teacher.email,
-                name: teacher.name
-              }));
-              window.location.href = 'video.html';
-            }
-          });
-        });
-
-        document.querySelectorAll('.like-button').forEach(button => {
-          button.addEventListener('click', async function (e) {
-            e.stopPropagation();
-
-            if (!currentUser || !currentUser.email) {
-              alert('Please login to like videos');
-              return;
-            }
-
-            const videoId = this.getAttribute('data-videoid');
-            const likeCountElement = this.querySelector('.like-count');
-
-            try {
-              const response = await fetch('/like-video', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ videoId, userId: currentUser.email })
-              });
-
-              const result = await response.json();
-
-              if (result.success) {
-                likeCountElement.textContent = result.likesCount;
-              } else {
-                alert('Failed to like video: ' + (result.message || ''));
-              }
-            } catch (error) {
-              console.error('Error liking video:', error);
-              alert('Failed to like video');
-            }
-          });
-        });
-
-        observeVideos(videos.map(v => v.id));
-        setupVideoProgressTracking(videos);
-      } catch (err) {
-        console.error('Error loading videos:', err);
-      }
+      setupInteractions(videos, users);
     }
 
-    function setupVideoProgressTracking(videos) {
-      videos.forEach(videoData => {
-        const videoElement = document.getElementById(`video-${videos.indexOf(videoData)}`);
-        if (!videoElement) return;
+    function setupInteractions(videos, users) {
+      document.querySelectorAll('.info').forEach(info => {
+        info.addEventListener('click', function () {
+          const teacherEmail = this.getAttribute('data-email');
+          const teacher = users.find(u => (u.email || '').toLowerCase() === teacherEmail.toLowerCase());
 
-        videoViewTrackers[videoData.id] = {
-          duration: 0,
-          watchedPercent: 0,
-          viewCounted: false
-        };
-
-        videoElement.addEventListener('loadedmetadata', function() {
-          videoViewTrackers[videoData.id].duration = this.duration;
-        });
-
-        videoElement.addEventListener('timeupdate', function() {
-          const tracker = videoViewTrackers[videoData.id];
-          if (!tracker || tracker.duration === 0) return;
-
-          const currentPercent = (this.currentTime / tracker.duration) * 100;
-          
-          // Check if at least 10% has been watched and view hasn't been counted yet
-          if (currentPercent >= 10 && !tracker.viewCounted) {
-            tracker.viewCounted = true;
-            incrementView(videoData.id);
-          }
-          
-          // Reset tracking when video loops or is replayed
-          if (currentPercent < 10 && tracker.viewCounted) {
-            tracker.viewCounted = false;
+          if (teacher && teacher.role === "teacher") {
+            localStorage.setItem('selectedTeacher', JSON.stringify({
+              email: teacher.email,
+              name: teacher.name
+            }));
+            window.location.href = 'video.html';
           }
         });
       });
+
+      document.querySelectorAll('.like-button').forEach(button => {
+        button.addEventListener('click', async function (e) {
+          e.stopPropagation();
+          if (!currentUser?.email) return alert('Login to like');
+
+          const videoId = this.getAttribute('data-videoid');
+          const likeCountElement = this.querySelector('.like-count');
+
+          const response = await fetch('/like-video', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoId, userId: currentUser.email })
+          });
+          const result = await response.json();
+          if (result.success) likeCountElement.textContent = result.likesCount;
+        });
+      });
+
+      observeVideos(videos.map(v => v.id));
+      trackVideoProgress(videos);
     }
 
-    function observeVideos(videoIds) {
-      const options = {
-        threshold: 0.7
-      };
-
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          const video = entry.target;
-          if (entry.isIntersecting) {
-            video.muted = false;
-            video.volume = 1.0;
-            video.play();
-
-            const videoCard = video.closest('.video-card');
-            const videoId = videoCard.querySelector('.like-button').getAttribute('data-videoid');
-            
-            // Reset view tracking when video becomes visible
-            if (videoViewTrackers[videoId]) {
-              videoViewTrackers[videoId].viewCounted = false;
-            }
-          } else {
-            video.pause();
-            video.currentTime = 0;
+    function trackVideoProgress(videos) {
+      videos.forEach((v, i) => {
+        const el = document.getElementById(`video-${i}`);
+        if (!el) return;
+        videoViewTrackers[v.id] = { duration: 0, watchedPercent: 0, viewCounted: false };
+        el.addEventListener('loadedmetadata', () => videoViewTrackers[v.id].duration = el.duration);
+        el.addEventListener('timeupdate', () => {
+          const t = videoViewTrackers[v.id];
+          const percent = (el.currentTime / t.duration) * 100;
+          if (percent >= 10 && !t.viewCounted) {
+            t.viewCounted = true;
+            incrementView(v.id);
           }
         });
-      }, options);
-
-      document.querySelectorAll('video').forEach(video => {
-        observer.observe(video);
       });
     }
 
     async function incrementView(videoId) {
-      try {
-        const res = await fetch('/view-video', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ videoId })
-        });
-
-        const result = await res.json();
-        if (result.success) {
-          const viewElement = document.getElementById(`views-${videoId}`);
-          if (viewElement) {
-            viewElement.textContent = `👁️ ${result.views}`;
-          }
-        }
-      } catch (err) {
-        console.error('Error incrementing view:', err);
+      const res = await fetch('/view-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoId })
+      });
+      const result = await res.json();
+      if (result.success) {
+        const viewElement = document.getElementById(`views-${videoId}`);
+        if (viewElement) viewElement.textContent = `👁️ ${result.views}`;
       }
+    }
+
+    function observeVideos(ids) {
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          const vid = entry.target;
+          if (entry.isIntersecting) vid.play();
+          else vid.pause();
+        });
+      }, { threshold: 0.7 });
+      document.querySelectorAll('video').forEach(video => observer.observe(video));
     }
 
     fetchVideos();
