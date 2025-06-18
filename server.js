@@ -20,7 +20,21 @@ app.use('/api/videos', express.static(path.join(__dirname, 'data', 'videos')));
 
 // API routes
 // -------------------- API ROUTES -------------------- //
-
+app.get('/all-videos', (req, res) => {
+  const filePath = path.join(__dirname, 'data', 'videos', 'videos.json');
+  fs.readFile(filePath, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Failed to read videos.json', err);
+      return res.status(500).json({ error: 'Failed to load videos' });
+    }
+    try {
+      const videos = JSON.parse(data);
+      res.json(videos);
+    } catch (e) {
+      res.status(500).json({ error: 'Invalid videos.json format' });
+    }
+  });
+});
 app.get('/api/teachers', (req, res) => {
   try {
     const data = fs.readFileSync(USERS_FILE, 'utf8');
