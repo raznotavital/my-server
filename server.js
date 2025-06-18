@@ -13,7 +13,7 @@ app.use(express.json());
 app.use(fileUpload());
 app.use(express.static('public'));
 app.use(express.json());
-app.use('/api/videos', express.static(path.join(__dirname, 'data', 'videos')));
+
 
 
 const USERS_FILE = path.join(__dirname, 'data', 'videos', 'users.json'); 
