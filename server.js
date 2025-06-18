@@ -14,6 +14,26 @@ app.use(fileUpload());
 app.use(express.static('public'));
 app.use(express.json());
 
+const VIDEOS_FILE = path.join(__dirname, 'data', 'videos', 'videos.json');
+const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
+
+// פונקציות עזר לקריאה וכתיבה לקובצי JSON
+function readJson(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (err) {
+    console.error(`Failed to read ${file}:`, err);
+    return [];
+  }
+}
+
+function writeJson(file, data) {
+  try {
+    fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+  } catch (err) {
+    console.error(`Failed to write ${file}:`, err);
+  }
+}
 
 
 const USERS_FILE = path.join(__dirname, 'data', 'videos', 'users.json'); 
@@ -591,6 +611,69 @@ app.get('/get-video-stats', (req, res) => {
   }
 });
 app.use('/api/teacher-profile', require('./api/teacher-profile'));
+app.get('/all-videos', (req, res) => {
+  const videoMeta = readJson(VIDEOS_FILE);
+  const allVideos = [];
+
+  function walk(dir) {
+    fs.readdirSync(dir).forEach(file => {
+      const fullPath = path.join(dir, file);
+      if (fs.lstatSync(fullPath).isDirectory()) {
+        walk(fullPath);
+      } else if (/\.(mp4|mov|webm|ogg)$/i.test(fullPath)) {
+        const relPath = path.relative(path.join(__dirname, 'public'), fullPath).replace(/\\/g, '/');
+        const video = videoMeta.find(v => v.path === `/${relPath}`) || {
+          id: path.basename(fullPath),
+          path: `/${relPath}`,
+          name: path.basename(fullPath),
+          description: '',
+          views: 0,
+          likes: [],
+          owner: relPath.split('/')[2] || 'unknown'
+        };
+        allVideos.push(video);
+      }
+    });
+  }
+
+  walk(UPLOADS_DIR);
+  res.json(allVideos.reverse());
+});
+app.post('/view-video', (req, res) => {
+  const { videoId } = req.body;
+  if (!videoId) return res.status(400).json({ success: false, message: 'Missing videoId' });
+
+  const videos = readJson(VIDEOS_FILE);
+  const idx = videos.findIndex(v => v.id === videoId);
+  if (idx === -1) return res.status(404).json({ success: false, message: 'Video not found' });
+
+  videos[idx].views = (videos[idx].views || 0) + 1;
+  writeJson(VIDEOS_FILE, videos);
+
+  res.json({ success: true, views: videos[idx].views });
+});
+app.post('/like-video', (req, res) => {
+  const { videoId, userId } = req.body;
+  if (!videoId || !userId) return res.status(400).json({ success: false, message: 'Missing data' });
+
+  const videos = readJson(VIDEOS_FILE);
+  const idx = videos.findIndex(v => v.id === videoId);
+  if (idx === -1) return res.status(404).json({ success: false, message: 'Video not found' });
+
+  const likes = videos[idx].likes || [];
+  const userIndex = likes.indexOf(userId);
+
+  if (userIndex === -1) {
+    likes.push(userId); // Like
+  } else {
+    likes.splice(userIndex, 1); // Unlike
+  }
+
+  videos[idx].likes = likes;
+  writeJson(VIDEOS_FILE, videos);
+
+  res.json({ success: true, likesCount: likes.length });
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
