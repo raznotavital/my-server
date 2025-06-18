@@ -6,6 +6,7 @@ const fs = require('fs');
 const upload = multer({ dest: 'uploads/' });
 const teachersHandler = require('./api/teachers');
 const app = express();
+const videoPath = `/uploads/${userEmail}/${file.filename}`;
 
 
 app.use(express.json());
