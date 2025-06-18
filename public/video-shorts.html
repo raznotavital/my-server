@@ -104,9 +104,11 @@
 
     async function fetchVideos() {
       try {
-        const res = await fetch('/all-videos');
-        const videos = await res.json();
+        // טוען את נתוני הסרטונים מקובץ videos.json
+        const videosRes = await fetch('data/videos/videos.json');
+        const videos = await videosRes.json();
 
+        // טוען את נתוני המשתמשים (אם עדיין נחוץ)
         const usersRes = await fetch('/users');
         const users = await usersRes.json();
 
@@ -128,13 +130,16 @@
           const views = videoData.views || 0;
           const likeCount = videoData.likes ? videoData.likes.length : 0;
 
+          // בונה את הנתיב לסרטון מתוך הנתונים ב-videos.json
+          const videoPath = `public/uploads/${videoData.owner}/${videoData.filename}`;
+
           const card = document.createElement('div');
           card.className = 'video-card';
 
           const videoId = `video-${index}`;
 
           card.innerHTML = `
-            <video id="${videoId}" src="${videoData.path}" playsinline loop muted></video>
+            <video id="${videoId}" src="${videoPath}" playsinline loop muted></video>
             <div class="info" data-email="${videoData.owner}">
               <strong>${videoData.name}</strong><br>
               <small>${videoData.description}</small><br>
