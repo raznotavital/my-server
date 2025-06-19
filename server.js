@@ -6,6 +6,8 @@ const fs = require('fs');
 const upload = multer({ dest: 'uploads/' });
 const teachersHandler = require('./api/teachers');
 const app = express();
+const USERS_FILE = path.join(__dirname, 'data', 'videos, 'users.json');
+
 
 
 
@@ -51,6 +53,17 @@ app.get('/api/teachers', (req, res) => {
   } catch (error) {
     console.error('Error reading users file:', error);
     res.status(500).json({ error: 'Failed to load users data' });
+  }
+});
+app.get('data/videos/users', (req, res) => {
+  try {
+    const users = fs.existsSync(USERS_FILE)
+      ? JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'))
+      : [];
+    res.json(users);
+  } catch (err) {
+    console.error('Failed to read users:', err);
+    res.status(500).json({ error: 'Failed to read users' });
   }
 });
 
