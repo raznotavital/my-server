@@ -5,23 +5,22 @@ const multer = require('multer');
 const fs = require('fs');
 const upload = multer({ dest: 'uploads/' });
 const teachersHandler = require('./api/teachers');
+
 const app = express();
+
+// הגדרות קבצים
 const USERS_FILE = path.join(__dirname, 'data', 'users.json');
-
-
-
-
-app.use(express.json());
-app.use(fileUpload());
-app.use(express.static('public'));
-app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'))); 
-
-
 const VIDEOS_FILE = path.join(__dirname, 'data', 'videos.json');
 
+// בדיקה אם הקבצים קיימים
+if (!fs.existsSync(USERS_FILE)) {
+  fs.writeFileSync(USERS_FILE, '[]', 'utf8');
+}
+if (!fs.existsSync(VIDEOS_FILE)) {
+  fs.writeFileSync(VIDEOS_FILE, '[]', 'utf8');
+}
 
-// פונקציות עזר לקריאה וכתיבה לקובצי JSON
+// פונקציות עזר לקריאה וכתיבה לקבצי JSON
 function readJson(file) {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -39,12 +38,13 @@ function writeJson(file, data) {
   }
 }
 
+// אמצעים
+app.use(express.json());
+app.use(fileUpload());
+app.use(express.static('public'));
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+app.use('/api/videos', express.static(path.join(__dirname, 'data', 'videos'))); // חשוב!
 
-const USERS_FILE = path.join(__dirname, 'data', 'users.json'); 
-// חשוב: הוספת route סטטי לקבצי וידאו
-app.use('/api/videos', express.static(path.join(__dirname, 'data', 'videos')));
-
-// API routes
 // -------------------- API ROUTES -------------------- //
 
 app.get('/api/teachers', (req, res) => {
