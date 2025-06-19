@@ -510,6 +510,13 @@ app.post('/like-video', (req, res) => {
 
     const videos = readJson(VIDEOS_FILE);
     const videoIndex = videos.findIndex(v => v.id === videoId);
+function readVideos() {
+  return readJson(VIDEOS_FILE);
+}
+
+function saveVideos(data) {
+  writeJson(VIDEOS_FILE, data);
+}
 
     if (videoIndex === -1) {
       return res.status(404).json({ success: false, message: "Video not found" });
@@ -578,7 +585,7 @@ app.get('/video-likes/:videoId', (req, res) => {
 });
 // נתיב לעדכון צפיות בסרטון
 
-  const videos = readJson(VIDEOS_FILE); // במקום readVideos()
+  const videos = readVideos(); // במקום readVideos()
 const videoIndex = videos.findIndex(v => v.id === videoId);
 
 if (videoIndex === -1) {
@@ -642,7 +649,7 @@ app.post('/view-video', (req, res) => {
   const { videoId } = req.body;
   if (!videoId) return res.status(400).json({ success: false, message: 'Missing videoId' });
 
-  const videos = readJson(VIDEOS_FILE);
+ const videos = readVideos();
   const idx = videos.findIndex(v => v.id === videoId);
   if (idx === -1) return res.status(404).json({ success: false, message: 'Video not found' });
 
@@ -655,7 +662,7 @@ app.post('/like-video', (req, res) => {
   const { videoId, userId } = req.body;
   if (!videoId || !userId) return res.status(400).json({ success: false, message: 'Missing data' });
 
-  const videos = readJson(VIDEOS_FILE);
+const videos = readVideos();
   const idx = videos.findIndex(v => v.id === videoId);
   if (idx === -1) return res.status(404).json({ success: false, message: 'Video not found' });
 
