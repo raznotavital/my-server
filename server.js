@@ -17,10 +17,7 @@ app.use(express.static('public'));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'))); 
 
-const USERS_FILE = path.join(__dirname, 'data', 'users.json');
-if (!fs.existsSync(USERS_FILE)) {
-  fs.writeFileSync(USERS_FILE, '[]', 'utf8');
-}
+
 const VIDEOS_FILE = path.join(__dirname, 'data', 'videos.json');
 
 
