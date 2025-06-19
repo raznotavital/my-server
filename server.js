@@ -501,8 +501,27 @@ app.post('/like-video', (req, res) => {
     }
 
     // Check if user already liked this video
+app.post('/like-video', (req, res) => {
+  try {
+    const { videoId, userId } = req.body;
+    if (!videoId || !userId) {
+      return res.status(400).json({ success: false, message: "Missing videoId or userId" });
+    }
+
+    const videos = readJson(VIDEOS_FILE);
+    const videoIndex = videos.findIndex(v => v.id === videoId);
+
+    if (videoIndex === -1) {
+      return res.status(404).json({ success: false, message: "Video not found" });
+    }
+
+    // Ensure likes array exists
+    if (!Array.isArray(videos[videoIndex].likes)) {
+      videos[videoIndex].likes = [];
+    }
+
     const alreadyLiked = videos[videoIndex].likes.includes(userId);
-    
+
     if (alreadyLiked) {
       // Unlike the video
       videos[videoIndex].likes = videos[videoIndex].likes.filter(id => id !== userId);
@@ -511,13 +530,14 @@ app.post('/like-video', (req, res) => {
       videos[videoIndex].likes.push(userId);
     }
 
-    saveVideos(videos);
+    writeJson(VIDEOS_FILE, videos);
 
     res.json({ 
       success: true,
       likesCount: videos[videoIndex].likes.length,
       isLiked: !alreadyLiked
     });
+
   } catch (err) {
     console.error('Error liking video:', err);
     res.status(500).json({ 
@@ -527,6 +547,7 @@ app.post('/like-video', (req, res) => {
     });
   }
 });
+
 
 // Get video likes count
 app.get('/video-likes/:videoId', (req, res) => {
