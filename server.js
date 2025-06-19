@@ -15,9 +15,11 @@ app.use(express.json());
 app.use(fileUpload());
 app.use(express.static('public'));
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'))); 
 
+const USERS_FILE = path.join(__dirname, 'data', 'users.json');
 const VIDEOS_FILE = path.join(__dirname, 'data', 'videos.json');
-const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
+
 
 // פונקציות עזר לקריאה וכתיבה לקובצי JSON
 function readJson(file) {
@@ -55,7 +57,7 @@ app.get('/api/teachers', (req, res) => {
     res.status(500).json({ error: 'Failed to load users data' });
   }
 });
-app.get('data/videos/users', (req, res) => {
+app.get('data/users', (req, res) => {
   try {
     const users = fs.existsSync(USERS_FILE)
       ? JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'))
@@ -431,15 +433,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Internal server error" });
 });
 
-app.get('/all-videos', (req, res) => {
-  try {
-    const videos = readVideos();
-    res.json(videos);
-  } catch (err) {
-    console.error('Error reading all videos:', err);
-    res.status(500).json({ error: "Failed to read videos" });
-  }
-});
+
 
 app.get('/api/teacher/:email', (req, res) => {
   const email = (req.params.email || '').trim().toLowerCase();
@@ -467,17 +461,29 @@ app.get('/users.json', (req, res) => {
 });
 // Add this to your existing server.js file
 
-// Like a video
+
+// לייק לסרטון
 app.post('/like-video', (req, res) => {
   try {
     const { videoId, userId } = req.body;
-    
-    if (!videoId || !userId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Missing videoId or userId" 
-      });
+    if (!videoId || !userId) return res.status(400).json({ error: 'Missing data' });
+
+    const videos = JSON.parse(fs.readFileSync(VIDEOS_FILE, 'utf8'));
+    const vid = videos.find(v => v.id === videoId);
+    if (!vid) return res.status(404).json({ error: 'Video not found' });
+
+    vid.likes = vid.likes || [];
+    if (!vid.likes.includes(userId)) {
+      vid.likes.push(userId);
     }
+
+    fs.writeFileSync(VIDEOS_FILE, JSON.stringify(videos, null, 2));
+    res.json({ success: true, likesCount: vid.likes.length });
+  } catch (err) {
+    console.error('Like failed:', err);
+    res.status(500).json({ error: 'Failed to like video' });
+  }
+});
 
     const videos = readVideos();
     const videoIndex = videos.findIndex(v => v.id === videoId);
@@ -550,16 +556,6 @@ app.get('/video-likes/:videoId', (req, res) => {
   }
 });
 // נתיב לעדכון צפיות בסרטון
-app.post('/view-video', (req, res) => {
-  try {
-    const { videoId } = req.body;
-    
-    if (!videoId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Missing videoId" 
-      });
-    }
 
     const videos = readVideos();
     const videoIndex = videos.findIndex(v => v.id === videoId);
@@ -592,15 +588,7 @@ app.post('/view-video', (req, res) => {
     });
   }
 });
-app.get('/all-videos', (req, res) => {
-  try {
-    const videos = readVideos();
-    res.json(videos);
-  } catch (err) {
-    console.error('Error reading all videos:', err);
-    res.status(500).json({ error: "Failed to read videos" });
-  }
-});
+
 app.get('/get-video-stats', (req, res) => {
   try {
     const videos = readVideos();
@@ -623,31 +611,7 @@ app.get('/get-video-stats', (req, res) => {
     });
   }
 });
-app.use('/api/teacher-profile', require('./api/teacher-profile'));
-app.get('/all-videos', (req, res) => {
-  const videoMeta = readJson(VIDEOS_FILE);
-  const allVideos = [];
 
-  function walk(dir) {
-    fs.readdirSync(dir).forEach(file => {
-      const fullPath = path.join(dir, file);
-      if (fs.lstatSync(fullPath).isDirectory()) {
-        walk(fullPath);
-      } else if (/\.(mp4|mov|webm|ogg)$/i.test(fullPath)) {
-        const relPath = path.relative(path.join(__dirname, 'public'), fullPath).replace(/\\/g, '/');
-        const video = videoMeta.find(v => v.path === `/${relPath}`) || {
-          id: path.basename(fullPath),
-          path: `/${relPath}`,
-          name: path.basename(fullPath),
-          description: '',
-          views: 0,
-          likes: [],
-          owner: relPath.split('/')[2] || 'unknown'
-        };
-        allVideos.push(video);
-      }
-    });
-  }
 
   walk(UPLOADS_DIR);
   res.json(allVideos.reverse());
@@ -687,6 +651,53 @@ app.post('/like-video', (req, res) => {
 
   res.json({ success: true, likesCount: likes.length });
 });
+app.get('/users', (req, res) => {
+  try {
+    const users = fs.existsSync(USERS_FILE)
+      ? JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'))
+      : [];
+    res.json(users);
+  } catch (err) {
+    console.error('Failed to read users:', err);
+    res.status(500).json({ error: 'Failed to read users' });
+  }
+});
+
+app.get('/all-videos', (req, res) => {
+  try {
+    const videos = fs.existsSync(VIDEOS_FILE)
+      ? JSON.parse(fs.readFileSync(VIDEOS_FILE, 'utf8'))
+      : [];
+    res.json(videos);
+  } catch (err) {
+    console.error('Failed to read videos:', err);
+    res.status(500).json({ error: 'Failed to read videos' });
+  }
+});
+
+app.post('/view-video', (req, res) => {
+  try {
+    const { videoId } = req.body;
+    if (!videoId) return res.status(400).json({ error: 'Missing videoId' });
+
+    const videos = JSON.parse(fs.readFileSync(VIDEOS_FILE, 'utf8'));
+    const vid = videos.find(v => v.id === videoId);
+    if (!vid) return res.status(404).json({ error: 'Video not found' });
+
+    vid.views = (vid.views || 0) + 1;
+
+    fs.writeFileSync(VIDEOS_FILE, JSON.stringify(videos, null, 2));
+    res.json({ success: true, views: vid.views });
+  } catch (err) {
+    console.error('View failed:', err);
+    res.status(500).json({ error: 'Failed to count view' });
+  }
+});
+
+app.use('/api/teacher-profile', require('./api/teacher-profile'));
+app.use('/api/teachers', require('./api/teachers'));
+
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
