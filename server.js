@@ -6,7 +6,7 @@ const fs = require('fs');
 const upload = multer({ dest: 'uploads/' });
 const teachersHandler = require('./api/teachers');
 const app = express();
-const USERS_FILE = path.join(__dirname, 'data', 'videos, 'users.json');
+const USERS_FILE = path.join(__dirname, 'data', 'users.json');
 
 
 
@@ -16,7 +16,7 @@ app.use(fileUpload());
 app.use(express.static('public'));
 app.use(express.json());
 
-const VIDEOS_FILE = path.join(__dirname, 'data', 'videos', 'videos.json');
+const VIDEOS_FILE = path.join(__dirname, 'data', 'videos.json');
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
 
 // פונקציות עזר לקריאה וכתיבה לקובצי JSON
@@ -38,7 +38,7 @@ function writeJson(file, data) {
 }
 
 
-const USERS_FILE = path.join(__dirname, 'data', 'videos', 'users.json'); 
+const USERS_FILE = path.join(__dirname, 'data', 'users.json'); 
 // חשוב: הוספת route סטטי לקבצי וידאו
 app.use('/api/videos', express.static(path.join(__dirname, 'data', 'videos')));
 
