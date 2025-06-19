@@ -578,15 +578,16 @@ app.get('/video-likes/:videoId', (req, res) => {
 });
 // נתיב לעדכון צפיות בסרטון
 
-    const videos = readVideos();
-    const videoIndex = videos.findIndex(v => v.id === videoId);
-    
-    if (videoIndex === -1) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Video not found" 
-      });
-    }
+  const videos = readJson(VIDEOS_FILE); // במקום readVideos()
+const videoIndex = videos.findIndex(v => v.id === videoId);
+
+if (videoIndex === -1) {
+  return res.status(404).json({ 
+    success: false, 
+    message: "Video not found" 
+  });
+}
+
 
     // עדכון מספר הצפיות
     if (!videos[videoIndex].views) {
