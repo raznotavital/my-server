@@ -508,8 +508,7 @@ app.post('/like-video', (req, res) => {
       return res.status(400).json({ success: false, message: "Missing videoId or userId" });
     }
 
-    const videos = readJson(VIDEOS_FILE);
-    const videoIndex = videos.findIndex(v => v.id === videoId);
+  // פונקציות עזר
 function readVideos() {
   return readJson(VIDEOS_FILE);
 }
@@ -518,11 +517,40 @@ function saveVideos(data) {
   writeJson(VIDEOS_FILE, data);
 }
 
+// צפייה בסרטון
+app.post('/view-video', (req, res) => {
+  try {
+    const { videoId } = req.body;
+    if (!videoId) return res.status(400).json({ error: 'Missing videoId' });
+
+    const videos = readVideos();
+    const idx = videos.findIndex(v => v.id === videoId);
+    if (idx === -1) return res.status(404).json({ error: 'Video not found' });
+
+    videos[idx].views = (videos[idx].views || 0) + 1;
+    saveVideos(videos);
+
+    res.json({ success: true, views: videos[idx].views });
+  } catch (err) {
+    console.error('Error incrementing view:', err);
+    res.status(500).json({ error: 'Failed to increment view count' });
+  }
+});
+
+// לייק לסרטון
+app.post('/like-video', (req, res) => {
+  try {
+    const { videoId, userId } = req.body;
+    if (!videoId || !userId) {
+      return res.status(400).json({ success: false, message: 'Missing data' });
+    }
+
+    const videos = readVideos();
+    const videoIndex = videos.findIndex(v => v.id === videoId);
     if (videoIndex === -1) {
       return res.status(404).json({ success: false, message: "Video not found" });
     }
 
-    // Ensure likes array exists
     if (!Array.isArray(videos[videoIndex].likes)) {
       videos[videoIndex].likes = [];
     }
@@ -530,156 +558,85 @@ function saveVideos(data) {
     const alreadyLiked = videos[videoIndex].likes.includes(userId);
 
     if (alreadyLiked) {
-      // Unlike the video
       videos[videoIndex].likes = videos[videoIndex].likes.filter(id => id !== userId);
     } else {
-      // Like the video
       videos[videoIndex].likes.push(userId);
     }
 
-    writeJson(VIDEOS_FILE, videos);
+    saveVideos(videos);
 
-    res.json({ 
+    res.json({
       success: true,
       likesCount: videos[videoIndex].likes.length,
       isLiked: !alreadyLiked
     });
-
   } catch (err) {
     console.error('Error liking video:', err);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: "Failed to like video",
-      error: err.message 
+      error: err.message
     });
   }
 });
 
-
-// Get video likes count
+// קבלת מספר לייקים
 app.get('/video-likes/:videoId', (req, res) => {
   try {
     const videoId = req.params.videoId;
     const videos = readVideos();
     const video = videos.find(v => v.id === videoId);
-    
+
     if (!video) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Video not found" 
-      });
+      return res.status(404).json({ success: false, message: "Video not found" });
     }
 
-    res.json({ 
+    res.json({
       success: true,
       likesCount: video.likes ? video.likes.length : 0
     });
   } catch (err) {
     console.error('Error getting video likes:', err);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: "Failed to get video likes",
-      error: err.message 
-    });
-  }
-});
-// נתיב לעדכון צפיות בסרטון
-
-  const videos = readVideos(); // במקום readVideos()
-const videoIndex = videos.findIndex(v => v.id === videoId);
-
-if (videoIndex === -1) {
-  return res.status(404).json({ 
-    success: false, 
-    message: "Video not found" 
-  });
-}
-
-
-    // עדכון מספר הצפיות
-    if (!videos[videoIndex].views) {
-      videos[videoIndex].views = 0;
-    }
-    videos[videoIndex].views += 1;
-
-    saveVideos(videos);
-
-    res.json({ 
-      success: true,
-      views: videos[videoIndex].views
-    });
-  } catch (err) {
-    console.error('Error incrementing video view:', err);
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to increment view count",
-      error: err.message 
+      error: err.message
     });
   }
 });
 
+// קבלת סטטיסטיקות צפיות ולייקים
 app.get('/get-video-stats', (req, res) => {
   try {
     const videos = readVideos();
-    console.log('All videos:', videos); // נוסיף לוג לבדיקה
-    
-    // נשנה את הפילטר כדי לוודא שאנחנו מקבלים את כל הסרטונים עם ערך views
-    const videosWithStats = videos.map(video => ({
+    const stats = videos.map(video => ({
       ...video,
-      views: video.views || 0 // נבטיח שלכל סרטון יש ערך views
+      views: video.views || 0,
+      likesCount: video.likes ? video.likes.length : 0
     }));
-    
-    console.log('Videos with stats:', videosWithStats); // לוג נוסף לבדיקה
-    res.json(videosWithStats);
+    res.json(stats);
   } catch (err) {
     console.error('Error getting video stats:', err);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: "Failed to get video statistics",
-      error: err.message 
+      error: err.message
     });
   }
 });
 
-
-  walk(UPLOADS_DIR);
-  res.json(allVideos.reverse());
-});
-app.post('/view-video', (req, res) => {
-  const { videoId } = req.body;
-  if (!videoId) return res.status(400).json({ success: false, message: 'Missing videoId' });
-
- const videos = readVideos();
-  const idx = videos.findIndex(v => v.id === videoId);
-  if (idx === -1) return res.status(404).json({ success: false, message: 'Video not found' });
-
-  videos[idx].views = (videos[idx].views || 0) + 1;
-  writeJson(VIDEOS_FILE, videos);
-
-  res.json({ success: true, views: videos[idx].views });
-});
-app.post('/like-video', (req, res) => {
-  const { videoId, userId } = req.body;
-  if (!videoId || !userId) return res.status(400).json({ success: false, message: 'Missing data' });
-
-const videos = readVideos();
-  const idx = videos.findIndex(v => v.id === videoId);
-  if (idx === -1) return res.status(404).json({ success: false, message: 'Video not found' });
-
-  const likes = videos[idx].likes || [];
-  const userIndex = likes.indexOf(userId);
-
-  if (userIndex === -1) {
-    likes.push(userId); // Like
-  } else {
-    likes.splice(userIndex, 1); // Unlike
+// קבלת כל הסרטונים
+app.get('/all-videos', (req, res) => {
+  try {
+    const videos = readVideos();
+    res.json(videos);
+  } catch (err) {
+    console.error('Failed to read videos:', err);
+    res.status(500).json({ error: 'Failed to read videos' });
   }
-
-  videos[idx].likes = likes;
-  writeJson(VIDEOS_FILE, videos);
-
-  res.json({ success: true, likesCount: likes.length });
 });
+
+// קבלת רשימת המשתמשים
 app.get('/users', (req, res) => {
   try {
     const users = fs.existsSync(USERS_FILE)
@@ -689,37 +646,6 @@ app.get('/users', (req, res) => {
   } catch (err) {
     console.error('Failed to read users:', err);
     res.status(500).json({ error: 'Failed to read users' });
-  }
-});
-
-app.get('/all-videos', (req, res) => {
-  try {
-    const videos = fs.existsSync(VIDEOS_FILE)
-      ? JSON.parse(fs.readFileSync(VIDEOS_FILE, 'utf8'))
-      : [];
-    res.json(videos);
-  } catch (err) {
-    console.error('Failed to read videos:', err);
-    res.status(500).json({ error: 'Failed to read videos' });
-  }
-});
-
-app.post('/view-video', (req, res) => {
-  try {
-    const { videoId } = req.body;
-    if (!videoId) return res.status(400).json({ error: 'Missing videoId' });
-
-    const videos = JSON.parse(fs.readFileSync(VIDEOS_FILE, 'utf8'));
-    const vid = videos.find(v => v.id === videoId);
-    if (!vid) return res.status(404).json({ error: 'Video not found' });
-
-    vid.views = (vid.views || 0) + 1;
-
-    fs.writeFileSync(VIDEOS_FILE, JSON.stringify(videos, null, 2));
-    res.json({ success: true, views: vid.views });
-  } catch (err) {
-    console.error('View failed:', err);
-    res.status(500).json({ error: 'Failed to count view' });
   }
 });
 
