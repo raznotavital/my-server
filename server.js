@@ -465,15 +465,6 @@ app.get('/users.json', (req, res) => {
 
 
 
-    const videos = readVideos();
-    const videoIndex = videos.findIndex(v => v.id === videoId);
-    
-    if (videoIndex === -1) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Video not found" 
-      });
-    }
 
     // Initialize likes array if it doesn't exist
     if (!videos[videoIndex].likes) {
@@ -512,7 +503,6 @@ app.post('/view-video', (req, res) => {
   }
 });
 
-// לייק לסרטון
 app.post('/like-video', (req, res) => {
   try {
     const { videoId, userId } = req.body;
@@ -520,7 +510,11 @@ app.post('/like-video', (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing data' });
     }
 
-
+    const videos = readVideos();
+    const videoIndex = videos.findIndex(v => v.id === videoId);
+    if (videoIndex === -1) {
+      return res.status(404).json({ success: false, message: "Video not found" });
+    }
 
     if (!Array.isArray(videos[videoIndex].likes)) {
       videos[videoIndex].likes = [];
@@ -550,6 +544,7 @@ app.post('/like-video', (req, res) => {
     });
   }
 });
+
 
 
 // קבלת מספר לייקים
