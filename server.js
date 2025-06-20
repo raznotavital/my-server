@@ -466,22 +466,7 @@ app.get('/users.json', (req, res) => {
 
 
 
-    // Initialize likes array if it doesn't exist
-    if (!videos[videoIndex].likes) {
-      videos[videoIndex].likes = [];
-    }
-
-    // Check if user already liked this video
-
-
-  // פונקציות עזר
-function readVideos() {
-  return readJson(VIDEOS_FILE);
-}
-
-function saveVideos(data) {
-  writeJson(VIDEOS_FILE, data);
-}
+  
 
 // צפייה בסרטון
 app.post('/view-video', (req, res) => {
