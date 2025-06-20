@@ -462,28 +462,8 @@ app.get('/users.json', (req, res) => {
 // Add this to your existing server.js file
 
 
-// לייק לסרטון
-app.post('/like-video', (req, res) => {
-  try {
-    const { videoId, userId } = req.body;
-    if (!videoId || !userId) return res.status(400).json({ error: 'Missing data' });
 
-    const videos = JSON.parse(fs.readFileSync(VIDEOS_FILE, 'utf8'));
-    const vid = videos.find(v => v.id === videoId);
-    if (!vid) return res.status(404).json({ error: 'Video not found' });
 
-    vid.likes = vid.likes || [];
-    if (!vid.likes.includes(userId)) {
-      vid.likes.push(userId);
-    }
-
-    fs.writeFileSync(VIDEOS_FILE, JSON.stringify(videos, null, 2));
-    res.json({ success: true, likesCount: vid.likes.length });
-  } catch (err) {
-    console.error('Like failed:', err);
-    res.status(500).json({ error: 'Failed to like video' });
-  }
-});
 
     const videos = readVideos();
     const videoIndex = videos.findIndex(v => v.id === videoId);
@@ -501,12 +481,7 @@ app.post('/like-video', (req, res) => {
     }
 
     // Check if user already liked this video
-app.post('/like-video', (req, res) => {
-  try {
-    const { videoId, userId } = req.body;
-    if (!videoId || !userId) {
-      return res.status(400).json({ success: false, message: "Missing videoId or userId" });
-    }
+
 
   // פונקציות עזר
 function readVideos() {
@@ -579,6 +554,7 @@ app.post('/like-video', (req, res) => {
     });
   }
 });
+
 
 // קבלת מספר לייקים
 app.get('/video-likes/:videoId', (req, res) => {
