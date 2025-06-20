@@ -520,11 +520,7 @@ app.post('/like-video', (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing data' });
     }
 
-    const videos = readVideos();
-    const videoIndex = videos.findIndex(v => v.id === videoId);
-    if (videoIndex === -1) {
-      return res.status(404).json({ success: false, message: "Video not found" });
-    }
+
 
     if (!Array.isArray(videos[videoIndex].likes)) {
       videos[videoIndex].likes = [];
