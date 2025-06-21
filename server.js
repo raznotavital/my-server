@@ -21,6 +21,15 @@ if (!fs.existsSync(VIDEOS_FILE)) {
 }
 
 // פונקציות עזר לקריאה וכתיבה לקבצי JSON
+
+function readVideos() {
+  return readJson(VIDEOS_FILE);
+}
+
+function saveVideos(data) {
+  writeJson(VIDEOS_FILE, data);
+}
+
 function readJson(file) {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
