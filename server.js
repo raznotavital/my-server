@@ -5,7 +5,7 @@ const multer = require('multer');
 const fs = require('fs');
 const upload = multer({ dest: 'uploads/' });
 const teachersHandler = require('./api/teachers');
-
+const cors = require('cors');
 const app = express();
 
 // הגדרות קבצים
@@ -44,7 +44,7 @@ app.use(fileUpload());
 app.use(express.static('public'));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/api/videos', express.static(path.join(__dirname, 'data', 'videos'))); // חשוב!
-
+app.use(cors());
 // -------------------- API ROUTES -------------------- //
 
 app.get('/api/teachers', (req, res) => {
